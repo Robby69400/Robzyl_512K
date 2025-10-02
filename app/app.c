@@ -61,7 +61,7 @@
     #include "screenshot.h"
 #endif
 
-#include "driver/eeprom.h"   // EEPROM_ReadBuffer()
+#include "driver/eeprom.h"
 
 bool gCurrentTxState = false;
 

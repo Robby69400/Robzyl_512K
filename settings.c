@@ -181,10 +181,6 @@ void SETTINGS_SaveChannel(uint16_t Channel, const VFO_Info_t *pVFO, uint8_t Mode
 					if (Mode >= 3) {
 						SETTINGS_SaveChannelName(Channel, pVFO->Name);
 
-						#ifdef ENABLE_SPECTRUM_SHOW_CHANNEL_NAME
-							//update channel names stored in memory
-							BOARD_gMR_LoadChannels();
-						#endif
 					}
 				#endif
 			}

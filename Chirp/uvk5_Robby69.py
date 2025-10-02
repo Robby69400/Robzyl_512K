@@ -62,21 +62,19 @@ band:3;
 #seekto 0x2000;
 struct {
   ul32 freq;
+  
   ul32 offset;
-
-// 0x08
+  
   u8 rxcode;
+  
   u8 txcode;
-
-// 0x0A
+  
   u8 txcodeflag:4,
   rxcodeflag:4;
-
-// 0x0B
+  
   u8 modulation:4,
   offsetDir:4;
 
-// 0x0C
   u8 __UNUSED1:1,
   bandwidth_ext:2,
   busyChLockout:1,
@@ -84,16 +82,15 @@ struct {
   bandwidth:1,
   freq_reverse:1;
 
-  // 0x0D
   u8 __UNUSED2:4,
   dtmf_pttid:3,
   dtmf_decode:1;
 
-  // 0x0E
   u8 step;
+  
   u8 scrambler;
 
-} channel[1014];
+} channel[1014]; // Size 32+32+8*8 = 128b > 16 Bytes
 
 #seekto 0x5E80;
 struct {

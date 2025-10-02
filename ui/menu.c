@@ -25,7 +25,7 @@
 #include "dcs.h"
 #include "driver/backlight.h"
 #include "driver/bk4819.h"
-#include "driver/eeprom.h"   // EEPROM_ReadBuffer()
+#include "driver/eeprom.h"
 #include "driver/st7565.h"
 #include "external/printf/printf.h"
 #include "frequencies.h"

@@ -87,7 +87,7 @@ uint16_t RADIO_FindNextChannel(uint16_t Channel, int8_t Direction, bool bCheckSc
 		
 	for (i = 0; IS_MR_CHANNEL(i); i++)
 	{
-		if (Channel == 0x5E80)
+		if (i == MR_CHANNEL_LAST)
 			Channel = MR_CHANNEL_LAST;
 		else
 		if (!IS_MR_CHANNEL(Channel))
