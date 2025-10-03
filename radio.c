@@ -99,7 +99,7 @@ uint16_t RADIO_FindNextChannel(uint16_t Channel, int8_t Direction, bool bCheckSc
 		Channel += Direction;
 	}
 	
-	return MR_CHANNEL_LAST;
+	return 0xFFFF;
 }
 
 void RADIO_InitInfo(VFO_Info_t *pInfo, const uint16_t ChannelSave, const uint32_t Frequency)
@@ -135,7 +135,7 @@ void RADIO_ConfigureChannel(const unsigned int VFO, const unsigned int configure
 	if (IS_VALID_CHANNEL(Channel)) {
 		if (IS_MR_CHANNEL(Channel)) {
 			Channel = RADIO_FindNextChannel(Channel, RADIO_CHANNEL_UP, false, VFO);
-			if (Channel == MR_CHANNEL_LAST) {
+			if (Channel == 0xFFFF) {
 				Channel                    = gEeprom.FreqChannel[VFO];
 				gEeprom.ScreenChannel[VFO] = gEeprom.FreqChannel[VFO];
 			}

@@ -362,7 +362,7 @@ static void MAIN_Key_UP_DOWN(bool bKeyPressed, bool bKeyHeld, int8_t Direction)
 			}
 
 			Next = RADIO_FindNextChannel(Channel + Direction, Direction, false, 0);
-			if (Next == MR_CHANNEL_LAST)
+			if (Next == 0xFFFF)
 				return;
 
 			if (Channel == Next)

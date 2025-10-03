@@ -139,13 +139,13 @@ void SETTINGS_SaveChannel(uint16_t Channel, const VFO_Info_t *pVFO, uint8_t Mode
 		uint16_t OffsetVFO = 0x2000 + Channel * 16;
 
 		if (!IS_MR_CHANNEL(Channel))
-		{	// it's a VFO, not a channel
+		{	// it's a VFO, not a Channel
 			OffsetVFO  = 0x0C80;
 			OffsetVFO += (Channel - FREQ_CHANNEL_FIRST) * 32;
 		}
 
 		if (Mode >= 2 || !IS_MR_CHANNEL(Channel))
-		{	// copy VFO to a channel
+		{	// copy VFO to a Channel
 
 			uint8_t State[8];
 
@@ -172,10 +172,10 @@ void SETTINGS_SaveChannel(uint16_t Channel, const VFO_Info_t *pVFO, uint8_t Mode
 			SETTINGS_UpdateChannel(Channel, pVFO, true);
 
 			if (IS_MR_CHANNEL(Channel))
-			{	// it's a memory channel
+			{	// it's a memory Channel
 
 				#ifndef ENABLE_KEEP_MEM_NAME
-					// clear/reset the channel name
+					// clear/reset the Channel name
 					SETTINGS_SaveChannelName(Channel, "");
 				#else
 					if (Mode >= 3) {
@@ -199,13 +199,13 @@ void SETTINGS_SaveBatteryCalibration(const uint16_t * batteryCalibration)
 	EEPROM_WriteBuffer(0x1F48, buf);
 }
 
-void SETTINGS_SaveChannelName(uint16_t channel, const char * name)
+void SETTINGS_SaveChannelName(uint16_t Channel, const char * name)
 {
-	uint16_t offset = channel * 16;
+	uint16_t offset = Channel * 16;
 	uint8_t  buf[16];
 	memset(&buf, 0x00, sizeof(buf));
 	memcpy(buf, name, MIN(strlen(name),10u));
-	EEPROM_WriteBuffer(0x5E80 + offset, buf); //1000 channels
+	EEPROM_WriteBuffer(0x5E80 + offset, buf); //1000 Channels
 	EEPROM_WriteBuffer(0x5E88 + offset, buf + 8);
 }
 
@@ -263,9 +263,9 @@ void SETTINGS_UpdateChannel(uint16_t Channel, const VFO_Info_t *pVFO, bool keep)
 
 		gMR_ChannelAttributes[Channel] = att;
 
-		if (IS_MR_CHANNEL(Channel)) {	// it's a memory channel
+		if (IS_MR_CHANNEL(Channel)) {	// it's a memory Channel
 			if (!keep) {
-				// clear/reset the channel name
+				// clear/reset the Channel name
 				SETTINGS_SaveChannelName(Channel, "");
 			}
 		}

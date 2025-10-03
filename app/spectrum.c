@@ -1,7 +1,7 @@
 #include "app/spectrum.h"
 #include "scanner.h"
 #include "driver/backlight.h"
-#include "driver/eeprom.h"
+#include "driver/eeprom.h"   // EEPROM_ReadBuffer()
 
 #include "ui/helper.h"
 #include "common.h"
@@ -110,8 +110,8 @@ static char StringC[10];
 bool isKnownChannel = false;
 int  Channel;
 int  latestChannel;
-char ChannelName[10];
-char rxChannelName[10];
+char ChannelName[12];
+char rxChannelName[12];
 ModulationMode_t  ChannelModulation;
 BK4819_FilterBandwidth_t ChannelBandwidth;
 void LoadValidMemoryChannels(void);
@@ -166,11 +166,11 @@ static uint8_t nextBandToScanIndex = 0;
 uint8_t menuState = 0;
 
 #ifdef ENABLE_SCANLIST_SHOW_DETAIL
-  static uint8_t scanListChannels[200]; // Array to store Channel indices for selected scanlist
-  static uint8_t scanListChannelsCount = 0; // Number of Channels in selected scanlist
-  static uint8_t scanListChannelsSelectedIndex = 0;
-  static uint8_t scanListChannelsScrollOffset = 0;
-  static uint8_t selectedScanListIndex = 0; // Which scanlist we're viewing Channels for
+  static uint16_t scanListChannels[1000]; // Array to store Channel indices for selected scanlist
+  static uint16_t scanListChannelsCount = 0; // Number of Channels in selected scanlist
+  static uint16_t scanListChannelsSelectedIndex = 0;
+  static uint16_t scanListChannelsScrollOffset = 0;
+  static uint16_t selectedScanListIndex = 0; // Which scanlist we're viewing Channels for
   static void BuildScanListChannels(uint8_t scanListIndex);
   static void RenderScanListChannels();
   static void RenderScanListChannelsDoubleLines(const char* title, uint8_t numItems, uint8_t selectedIndex, uint8_t scrollOffset);
@@ -1162,7 +1162,7 @@ static void formatHistory(char *buf, uint8_t index, int Channel, uint32_t freq) 
     RemoveTrailZeros(freqStr);
 
     if(Channel != -1) {
-      char Name[10];
+      char Name[12];
       ReadChannelName(Channel,*Name);
         snprintf(buf, 19, "%s(%u)", 
                 Name,
@@ -1719,7 +1719,7 @@ static void OnKeyDown(uint8_t key) {
           ResetModifiers();
           if(Key_1_pressed) {
             Key_1_pressed = 0;
-            //APP_RunSpectrum(3);
+            APP_RunSpectrum(3);
           }
           break;
 
@@ -1889,7 +1889,7 @@ static void OnKeyDown(uint8_t key) {
     Spectrum_state++;
       if(Spectrum_state > 4) Spectrum_state = 0;
       //SYSTEM_DelayMs(2000);
-      //APP_RunSpectrum(Spectrum_state);
+      APP_RunSpectrum(Spectrum_state);
     break;
   
     case KEY_SIDE1:
@@ -2460,7 +2460,7 @@ void LoadValidMemoryChannels(void)
         uint16_t nextChannel;
         nextChannel = RADIO_FindNextChannel((ChannelIndex)+1, 1, listsEnabled, CurrentScanList-1);
 
-        if (nextChannel == 0xFF)
+        if (nextChannel == 0xFFFF)
         {	// no valid Channel found
           break;
         }
@@ -2611,7 +2611,7 @@ static void ClearSettings()
 
 static bool GetScanListLabel(uint8_t scanListIndex, char* bufferOut) {
     ChannelAttributes_t att;
-    char Channel_name[10];
+    char Channel_name[12];
     int first_Channel = -1;
     int Channel_count = 0;
 
@@ -2735,7 +2735,7 @@ static void GetHistoryItemText(uint8_t index, char* buffer) {
     int Channel = FetchChannelNumber(HFreqs[index]);
     
     if (Channel != -1) {
-        char Name[10];
+        char Name[12];
         ReadChannelName(Channel, *Name);
         sprintf(buffer, "%s%s:%d", 
                 HBlacklisted[index] ? "#" : "",
@@ -2930,7 +2930,7 @@ static void RenderScanListChannelsDoubleLines(const char* title, uint8_t numItem
         if (itemIndex >= numItems) break;
         
         uint16_t ChannelIndex = scanListChannels[itemIndex];
-        char Channel_name[10];
+        char Channel_name[12];
         SETTINGS_FetchChannelName(Channel_name, ChannelIndex);
         uint32_t freq;
         ReadChannelFrequency(ChannelIndex, freq);
