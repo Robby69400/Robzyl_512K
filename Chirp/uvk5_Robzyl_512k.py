@@ -48,7 +48,7 @@ u8 mic_gain;
 u8 backlight_min:4,
 backlight_max:4;
 
-u8 channel_display_mode;
+u8 Channel_display_mode;
 u8 unused;
 u8 battery_save;
 u8 backlight_time;
@@ -224,12 +224,12 @@ struct {
   u8 __UNUSED2;
   u8 step;
   u8 scrambler;
-} channel[1000];
+} Channel[1000];
 
 #seekto 0x5E80;
 struct {
 char name[16];
-} channelname[1000];
+} Channelname[1000];
 
 """
 
@@ -254,7 +254,7 @@ SCRAMBLER_LIST = ["OFF", "2600Hz", "2700Hz", "2800Hz", "2900Hz", "3000Hz",
                    "3100Hz", "3200Hz", "3300Hz", "3400Hz", "3500Hz"]
 # rx mode
 RXMODE_LIST = ["MAIN ONLY", "DUAL RX RESPOND", "CROSS BAND", "MAIN TX DUAL RX"]
-# channel display mode
+# Channel display mode
 CHANNELDISP_LIST = ["Frequency", "Channel Number", "Name", "Name + Frequency"]
 
 # TalkTime
@@ -720,7 +720,7 @@ class UVK5Radio(chirp_common.CloneModeRadio):
     # Return a raw representation of the memory object, which
     # is very helpful for development
     def get_raw_memory(self, number):
-        return repr(self._memobj.channel[number-1])
+        return repr(self._memobj.Channel[number-1])
 
     def validate_memory(self, mem):
         msgs = super().validate_memory(mem)
@@ -837,14 +837,14 @@ class UVK5Radio(chirp_common.CloneModeRadio):
 
         mem.number = ch_num + 1
 
-        _mem = self._memobj.channel[ch_num]
+        _mem = self._memobj.Channel[ch_num]
 
         is_empty = False
         # We'll consider any blank (i.e. 0MHz frequency) to be empty
         if (_mem.freq == 0xffffffff) or (_mem.freq == 0):
             is_empty = True
 
-        # We'll also look at the channel attributes if a memory has them
+        # We'll also look at the Channel attributes if a memory has them
         tmpscn = SCANLIST_LIST[0]
 
         if ch_num < 1000:
@@ -885,7 +885,7 @@ class UVK5Radio(chirp_common.CloneModeRadio):
 
             return mem
 
-        _mem2 = self._memobj.channelname[ch_num]
+        _mem2 = self._memobj.Channelname[ch_num]
         for char in _mem2.name:
             if str(char) == "\xFF" or str(char) == "\x00":
                 break
@@ -1005,8 +1005,8 @@ class UVK5Radio(chirp_common.CloneModeRadio):
                 _mem.mic_gain = int(element.value)
 
             # Channel display mode
-            elif elname == "channel_display_mode":
-                _mem.channel_display_mode = CHANNELDISP_LIST.index(str(element.value))
+            elif elname == "Channel_display_mode":
+                _mem.Channel_display_mode = CHANNELDISP_LIST.index(str(element.value))
 
             # RX Mode
             elif elname == "rx_mode":
@@ -1242,10 +1242,10 @@ class UVK5Radio(chirp_common.CloneModeRadio):
         mic_bar_setting = RadioSetting("mic_bar",
                                        "Microphone Bar display (MicBar)", val)
 
-        tmpchdispmode = list_def(_mem.channel_display_mode,
+        tmpchdispmode = list_def(_mem.Channel_display_mode,
                                  CHANNELDISP_LIST, "Frequency")
         val = RadioSettingValueList(CHANNELDISP_LIST, None, tmpchdispmode)
-        ch_disp_setting = RadioSetting("channel_display_mode",
+        ch_disp_setting = RadioSetting("Channel_display_mode",
                                        "Channel display mode (ChDisp)", val)
 
         tmpdispmode = list_def(_mem.power_on_dispmode, WELCOME_LIST, 0)
@@ -1396,12 +1396,12 @@ class UVK5Radio(chirp_common.CloneModeRadio):
         number = memory.number-1
 
         # Get a low-level memory object mapped to the image
-        _mem = self._memobj.channel[number]
+        _mem = self._memobj.Channel[number]
         _mem4 = self._memobj.ch_attr[number]
         # empty memory
         if memory.empty:
             _mem.set_raw("\xFF" * 16)
-            _mem2 = self._memobj.channelname[number]
+            _mem2 = self._memobj.Channelname[number]
             _mem2.set_raw("\xFF" * 16)
             _mem4.scanlist = 0
             _mem4.is_free = 1
@@ -1457,7 +1457,7 @@ class UVK5Radio(chirp_common.CloneModeRadio):
         band = self._find_band(_mem.freq)
         _mem4.band = band
 
-        _mem2 = self._memobj.channelname[number]
+        _mem2 = self._memobj.Channelname[number]
         tag = memory.name.ljust(10) + "\x00"*6
         _mem2.name = tag  # Store the alpha tag
 
