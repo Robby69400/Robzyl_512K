@@ -594,10 +594,7 @@ void BOARD_EEPROM_Init(void)
 			att->band = 0xf;
 		}
 	}
-	#ifdef ENABLE_SPECTRUM_SHOW_CHANNEL_NAME
-		BOARD_gMR_LoadChannels();
-	#endif
-
+	
 }
 
 void BOARD_EEPROM_LoadCalibration(void)

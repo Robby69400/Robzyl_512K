@@ -493,6 +493,7 @@ static void DeInitSpectrum(bool ComeBack) {
     }
 }
 
+/////////////////////////////EEPROM://///////////////////////////
 void ReadChannelFrequency(uint16_t Channel, uint32_t *frequency) {
     EEPROM_ReadBuffer(0x2000 + Channel * 16, (uint8_t *)frequency, 4);
 }
@@ -512,6 +513,34 @@ uint16_t FetchChannelNumber(uint32_t frequency) {
     }
     return 0xFFFF;
 }
+
+typedef struct HistoryStruct {
+    uint32_t HFreqs;
+    uint8_t HCount;
+    uint8_t HBlacklisted;
+} HistoryStruct;
+
+void ReadHistory() {
+    HistoryStruct History= {0};
+    for (uint16_t position = 0; position < HISTORY_SIZE; position++) {
+    EEPROM_ReadBuffer(0x9D00 + position * sizeof(HistoryStruct), (uint8_t *)&History, sizeof(HistoryStruct));
+    if (History.HBlacklisted > 1) return;
+    HFreqs[position] = History.HFreqs;
+    HCount[position] = History.HCount;
+    HBlacklisted[position] = History.HBlacklisted;
+    indexFs = position;
+  }
+}
+
+void WriteHistory(uint8_t HPosition) {
+    HistoryStruct History= {0};
+    if (HPosition >= 200) return;
+    History.HFreqs = HFreqs[HPosition];
+    History.HCount = HCount[HPosition];
+    History.HBlacklisted = HBlacklisted[HPosition];
+    EEPROM_WriteBuffer(0x9D00 + HPosition * sizeof(HistoryStruct), (uint8_t *)&History);
+}
+/////////////////////////////EEPROM://///////////////////////////
 
 static void ExitAndCopyToVfo() {
   RestoreRegisters();
@@ -1156,23 +1185,23 @@ switch(SpectrumMonitor) {
   }
 }
 
-static void formatHistory(char *buf, uint16_t index, uint16_t Channel, uint32_t freq) {
-    char freqStr[16];
-    char Name[12];
-    snprintf(freqStr, sizeof(freqStr), "%u.%05u", freq/100000, freq%100000);
-    RemoveTrailZeros(freqStr);
-    ReadChannelName(Channel,Name);
-    if(Channel != 0xFFFF) {
-        snprintf(buf, 19, "%s(%u)", 
-                Name,
-                HCount[index]);
-                
-    } else {
-        snprintf(buf, 19, "%s(%u)", 
-                freqStr,
-                HCount[index]);
-        }
-}
+//static void formatHistory(char *buf, uint16_t index, uint16_t Channel, uint32_t freq) {
+//    char freqStr[16];
+//    char Name[12];
+//    snprintf(freqStr, sizeof(freqStr), "%u.%05u", freq/100000, freq%100000);
+//    RemoveTrailZeros(freqStr);
+//    ReadChannelName(Channel,Name);
+//    if(Channel != 0xFFFF) {
+//        snprintf(buf, 19, "%s(%u)", 
+//                Name,
+//                HCount[index]);
+//                
+//    } else {
+//        snprintf(buf, 19, "%s(%u)", 
+//                freqStr,
+//                HCount[index]);
+//        }
+//}
 
 // ------------------ Popups ------------------
 static bool HandlePopup(void) {
@@ -1251,10 +1280,10 @@ static void DrawF(uint32_t f) {
     BuildEnabledScanLists(enabledLists, sizeof(enabledLists));
     
     // --- Contexte canal ---
-    f = HFreqs[historyListIndex];
+/*     f = HFreqs[historyListIndex];
     uint16_t ChannelFd = FetchChannelNumber(f);
     isKnownChannel = (ChannelFd != 0XFFFF);
-    memmove(rxChannelName, ChannelName, sizeof(rxChannelName));
+    memmove(rxChannelName, ChannelName, sizeof(rxChannelName)); */
 
     // Buffers
     char line1[19] = "";
@@ -1282,24 +1311,24 @@ static void DrawF(uint32_t f) {
                 snprintf(prefix, sizeof(prefix), "ALL ");
         }
 
-        if (isKnownChannel && ChannelName[0] && isListening) {
-            snprintf(line2, sizeof(line2), "%-3s%s", prefix, ChannelName);
-        } else {
+        //if (isKnownChannel && ChannelName[0] && isListening) {
+            //snprintf(line2, sizeof(line2), "%-3s%s", prefix, ChannelName);
+        //} else {
             snprintf(line2, sizeof(line2), "%s", prefix);
-        }
+        //}
         if (appMode == SCAN_BAND_MODE) {
             snprintf(line2, sizeof(line2), "%-3s%s", prefix, BParams[bl].BandName);
         }
     } 
 
-    if (ShowLines > 3 || !classic) {
+/*     if (ShowLines > 3 || !classic) {
         if (f > 0 && historyListIndex <HISTORY_SIZE) {
           formatHistory(line3, historyListIndex, ChannelFd, f);
         }
         else {
             snprintf(line3, sizeof(line3), "0:EMPTY(0)");
           }
-    }
+    } */
 
     // ------------------------------------------------------------
     // AFFICHAGE
@@ -2484,32 +2513,6 @@ void LoadValidMemoryChannels(void)
       }
   }
 
-typedef struct HistoryStruct {
-    uint32_t HFreqs;
-    uint8_t HCount;
-    uint8_t HBlacklisted;
-} HistoryStruct;
-
-void ReadHistory() {
-    HistoryStruct History= {0};
-    for (uint16_t position = 0; position < HISTORY_SIZE; position++) {
-    EEPROM_ReadBuffer(0x2000 + position * sizeof(HistoryStruct), (uint8_t *)&History, sizeof(HistoryStruct));
-    if (History.HBlacklisted > 1) return;
-    HFreqs[position] = History.HFreqs;
-    HCount[position] = History.HCount;
-    HBlacklisted[position] = History.HBlacklisted;
-    indexFs = position;
-  }
-}
-
-void WriteHistory(uint8_t HPosition) {
-    HistoryStruct History= {0};
-    if (HPosition >= 100) return;
-    History.HFreqs = HFreqs[HPosition];
-    History.HCount = HCount[HPosition];
-    History.HBlacklisted = HBlacklisted[HPosition];
-    EEPROM_WriteBuffer(0x2000 + HPosition * sizeof(HistoryStruct), (uint8_t *)&History);
-}
 
 typedef struct {
     // Block 1 (0x1D10 - 0x1D1F)

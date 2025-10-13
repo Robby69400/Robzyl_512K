@@ -170,7 +170,7 @@ void RADIO_ConfigureChannel(const unsigned int configure)
 	if (IS_MR_CHANNEL(Channel))
 		base = 0x2000 + Channel * 16;
 	else
-		base = 0x0C80 + ((Channel - FREQ_CHANNEL_FIRST) * 32);
+		base = 0x0C80 //+ ((Channel - FREQ_CHANNEL_FIRST) * 32);
 
 	if (configure == VFO_CONFIGURE_RELOAD || IS_FREQ_CHANNEL(Channel))
 	{
@@ -267,23 +267,20 @@ void RADIO_ConfigureChannel(const unsigned int configure)
 		}	
 
 		// ***************
-
-		struct {
-			uint32_t Frequency;
-			uint32_t Offset;
-		} __attribute__((packed)) info;
-		EEPROM_ReadBuffer(base, &info, sizeof(info));
-		if(info.Frequency==0xFFFFFFFF)
-			pVfo->freq_config_RX.Frequency = frequencyBandTable[band].lower;
-		else
-			pVfo->freq_config_RX.Frequency = info.Frequency;
-
-		if (info.Offset >= 100000000)
-			info.Offset = 1000000;
-		pVfo->TX_OFFSET_FREQUENCY = info.Offset;
-
-		// ***************
 	}
+	struct {
+		uint32_t Frequency;
+		uint32_t Offset;
+	} __attribute__((packed)) info;
+	EEPROM_ReadBuffer(base, &info, sizeof(info));
+	if(info.Frequency==0xFFFFFFFF)
+		pVfo->freq_config_RX.Frequency = frequencyBandTable[band].lower;
+	else
+		pVfo->freq_config_RX.Frequency = info.Frequency;
+	if (info.Offset >= 100000000)
+		info.Offset = 1000000;
+	pVfo->TX_OFFSET_FREQUENCY = info.Offset;
+
 
 	uint32_t frequency = pVfo->freq_config_RX.Frequency;
 

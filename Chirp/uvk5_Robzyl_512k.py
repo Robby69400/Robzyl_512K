@@ -3,6 +3,13 @@
 #
 # based on template.py Copyright 2012 Dan Smith <dsmith@danplanet.com>
 
+# 0x000 to 3E8 channel attributes 1 byte
+# 0x03E9 to 0x1DFF VFO params
+# 0x1F00 to 0x2000 calibration
+# 0x2000 to 0x5E80 channels freqs and params 16 bytes
+# 0x5E80 to 0x9CFF channels names 16 bytes
+# 0x9D00 to A1BO history record 6bytes (chirp read only see PROG_SIZE)
+
 
 import struct
 import logging
@@ -314,8 +321,8 @@ REMENDOFTALK_LIST = ["OFF", "Morse", "Mario"]
 RTE_LIST = ["OFF", "100ms", "200ms", "300ms", "400ms",
             "500ms", "600ms", "700ms", "800ms", "900ms", "1000ms"]
 
-MEM_SIZE = 0x7FFF   # size of all memory
-PROG_SIZE = 0x7FFF  # size of the memory that we will write
+MEM_SIZE = 0xA1B0   # size of all memory
+PROG_SIZE = 0x9D00  # size of the memory that we will write
 MEM_BLOCK = 0x80    # largest block of memory that we can reliably write
 BANDS_WIDE = {
         0: [ 18.0, 620.0],

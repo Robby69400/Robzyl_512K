@@ -63,7 +63,7 @@ void SystickHandler(void)
 		DECREMENT(gSerialConfigCountDown_500ms);
 	}
 	
-	if ((gGlobalSysTickCounter % 5) == 0)
+	if ((gGlobalSysTickCounter % 15) == 0)
 	{
 		gNextTimeslice_display = true;
 	} 
