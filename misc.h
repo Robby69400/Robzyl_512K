@@ -152,7 +152,7 @@ typedef union {
 typedef struct
 {
 	uint32_t     Frequency;
-	char         Name[12];
+	//NO NAMES char         Name[12];
 }  __attribute__((packed)) ChannelFrequencyAttributes;
 
 extern ChannelFrequencyAttributes gMR_ChannelFrequencyAttributes[MR_CHANNEL_LAST+1];
