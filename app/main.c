@@ -200,7 +200,7 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 
 			Channel = ((gInputBox[0] * 100) + (gInputBox[1] * 10) + gInputBox[2]) - 1;
 
-			if (!RADIO_CheckValidChannel(Channel, false)) return;
+			if (!RADIO_CheckValidChannel(Channel, false,0)) return;
 
 			gEeprom.MrChannel     = Channel;
 			gEeprom.ScreenChannel = Channel;
@@ -341,7 +341,7 @@ static void MAIN_Key_UP_DOWN(bool bKeyPressed, bool bKeyHeld, int8_t Direction)
 			gRequestSaveChannel = 1;
 			return;
 		}
-		Next = RADIO_FindNextChannel(Channel + Direction, Direction, false);
+		Next = RADIO_FindNextChannel(Channel + Direction, Direction, false,0);
 		if (Next == 0xFFFF) return;
 		if (Channel == Next) return;
 		gEeprom.MrChannel     = Next;

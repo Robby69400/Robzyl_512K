@@ -204,7 +204,7 @@ void SETTINGS_FetchChannelName(char *s, const uint16_t Channel)
 	if (Channel == 0xFFFF)
 		return;
 
-	if (!RADIO_CheckValidChannel(Channel, false)) return;
+	if (!RADIO_CheckValidChannel(Channel, false,0)) return;
 
 
 	EEPROM_ReadBuffer(0x5E80 + (Channel * 16), s + 0, 8);

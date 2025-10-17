@@ -20,7 +20,7 @@
           char str[64] = "";sprintf(str, "%d\r\n", Spectrum_state );LogUart(str);
 */
 #define MAX_VISIBLE_LINES 6
-#define HISTORY_SIZE 30
+#define HISTORY_SIZE 50
 uint32_t HFreqs[HISTORY_SIZE]= {0};
 uint8_t HCount[HISTORY_SIZE]= {0};
 bool HBlacklisted[HISTORY_SIZE]= {0};
@@ -2484,13 +2484,13 @@ void LoadValidMemoryChannels(void)
         break;
 
       uint16_t offset = scanChannelsCount;
-      uint16_t listChannelsCount = RADIO_ValidMemoryChannelsCount(listsEnabled);
+      uint16_t listChannelsCount = RADIO_ValidMemoryChannelsCount(listsEnabled, CurrentScanList-1);
       scanChannelsCount += listChannelsCount;
       uint16_t channelIndex= 0xFFFF;
       for(uint16_t i=0; i < listChannelsCount; i++)
       {
         uint16_t nextChannel;
-        nextChannel = RADIO_FindNextChannel((channelIndex)+1, 1, listsEnabled);
+        nextChannel = RADIO_FindNextChannel((channelIndex)+1, 1, listsEnabled, CurrentScanList-1);
 
         if (nextChannel == 0xFFFF) {break;}
         else

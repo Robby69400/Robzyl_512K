@@ -58,16 +58,21 @@ const char gModulationStr[][4] =
 const char *bwNames[5] = {"25k", "12.5k", "8.33k", "6.25k", "5k"};
 
 
-bool RADIO_CheckValidChannel(uint16_t Channel, bool bCheckScanList)
-{	// return true if the Channel appears valid
+bool RADIO_CheckValidChannel(uint16_t Channel, bool bCheckScanList, uint8_t VFO)
+{	// return true if the channel appears valid
 
 	ChannelAttributes_t att;
 
-	if (!IS_MR_CHANNEL(Channel)) return false;
+	if (!IS_MR_CHANNEL(Channel))
+		return false;
+
 	att = gMR_ChannelAttributes[Channel];
-	if (att.band > BAND7_470MHz) return false;
+
+	if (att.band > BAND7_470MHz)
+		return false;
+
 	if (bCheckScanList) {
-		if (att.scanlist == 1)
+		if (att.scanlist == VFO + 1)
 			return true;
 		else
 			return false;
@@ -76,7 +81,7 @@ bool RADIO_CheckValidChannel(uint16_t Channel, bool bCheckScanList)
 	return true;
 }
 
-uint16_t RADIO_FindNextChannel(uint16_t Channel, int8_t Direction, bool bCheckScanList)
+uint16_t RADIO_FindNextChannel(uint16_t Channel, int8_t Direction, bool bCheckScanList, uint8_t VFO)
 {
 	uint16_t i;
 		
@@ -84,9 +89,11 @@ uint16_t RADIO_FindNextChannel(uint16_t Channel, int8_t Direction, bool bCheckSc
 	{
 		if (Channel == 0xFFFF)
 			Channel = MR_CHANNEL_LAST;
-		else if (!IS_MR_CHANNEL(Channel)) Channel = MR_CHANNEL_FIRST;
+		else
+		if (!IS_MR_CHANNEL(Channel))
+			Channel = MR_CHANNEL_FIRST;
 
-		if (RADIO_CheckValidChannel(Channel, bCheckScanList))
+		if (RADIO_CheckValidChannel(Channel, bCheckScanList, VFO))
 			return Channel;
 
 		Channel += Direction;
@@ -127,7 +134,7 @@ void RADIO_ConfigureChannel(const unsigned int configure)
 
 	if (IS_VALID_CHANNEL(Channel)) {
 		if (IS_MR_CHANNEL(Channel)) {
-			Channel = RADIO_FindNextChannel(Channel, RADIO_CHANNEL_UP, false);
+			Channel = RADIO_FindNextChannel(Channel, RADIO_CHANNEL_UP, false,0);
 			if (Channel == 0xFFFF) {
 				Channel                    = gEeprom.FreqChannel;
 				gEeprom.ScreenChannel = gEeprom.FreqChannel;
@@ -779,11 +786,11 @@ void RADIO_SendEndOfTransmission(bool playRoger)
 	if (playRoger) {BK4819_PlayRoger(gEeprom.ROGER);}
 }
 
-uint16_t RADIO_ValidMemoryChannelsCount(bool bCheckScanList)
+uint16_t RADIO_ValidMemoryChannelsCount(bool bCheckScanList, uint8_t VFO)
 {
 	uint16_t count=0;
 	for (uint16_t i = MR_CHANNEL_FIRST; i<=MR_CHANNEL_LAST; ++i) {
-			if(RADIO_CheckValidChannel(i, bCheckScanList)) count++;
+			if(RADIO_CheckValidChannel(i, bCheckScanList, VFO)) count++;
 		}
 	return count;
 }
