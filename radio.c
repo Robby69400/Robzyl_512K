@@ -136,8 +136,6 @@ void RADIO_ConfigureChannel(const unsigned int configure)
 	else
 		Channel = FREQ_CHANNEL_LAST - 1;
 
-	//ChannelAttributes_t att;
-	//EEPROM_ReadBuffer(0x0000 + Channel, (uint8_t *)&att, sizeof(att));
 	ChannelAttributes_t att = gMR_ChannelAttributes[Channel];
 	if (att.__val == 0xFF) { // invalid/unused Channel
 		if (IS_MR_CHANNEL(Channel)) {
@@ -161,7 +159,11 @@ void RADIO_ConfigureChannel(const unsigned int configure)
 
 	uint16_t base;
 	if (IS_MR_CHANNEL(Channel))
-		base = 0x2000 + Channel * 16;
+#ifdef ENABLE_EEPROM_512K
+		base = 0x2000 + Channel * 16;	
+#else
+		base = 0x0000 + Channel * 16;
+#endif
 	else
 		base = 0x0C80 + ((Channel - FREQ_CHANNEL_FIRST) * 32);
 

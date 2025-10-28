@@ -20,7 +20,13 @@
           char str[64] = "";sprintf(str, "%d\r\n", Spectrum_state );LogUart(str);
 */
 #define MAX_VISIBLE_LINES 6
-#define HISTORY_SIZE 100
+#ifdef ENABLE_EEPROM_512K
+    #define HISTORY_SIZE 100	
+#else 
+	  #define HISTORY_SIZE 200
+#endif
+
+
 uint32_t HFreqs[HISTORY_SIZE]= {0};
 uint8_t HCount[HISTORY_SIZE]= {0};
 bool HBlacklisted[HISTORY_SIZE]= {0};
@@ -493,25 +499,14 @@ static void DeInitSpectrum(bool ComeBack) {
 }
 
 /////////////////////////////EEPROM://///////////////////////////
-/* void ReadChannelFrequency(uint16_t Channel, uint32_t *frequency) {
-    EEPROM_ReadBuffer(0x2000 + Channel * 16, (uint8_t *)frequency, 4);
-}*/
 
 void ReadChannelName(uint16_t Channel, char *name) {
-    EEPROM_ReadBuffer(0x3A90 + Channel * 16, (uint8_t *)name, 16);
+#ifdef ENABLE_EEPROM_512K
+    EEPROM_ReadBuffer(0x3A90 + Channel * 16, (uint8_t *)name, 16);	
+#else 
+	  EEPROM_ReadBuffer(0x0F50 + Channel * 16, (uint8_t *)name, 16);
+#endif
 }
-
-/*uint16_t FetchChannelNumber(uint32_t frequency) {
-    uint32_t f;
-    for (int i = MR_CHANNEL_FIRST; i <= MR_CHANNEL_LAST; i++) {
-        ReadChannelFrequency(i, &f);
-        if (f == 0xFFFFFFFF || f == 0x00000000)
-            continue;
-        if (f == frequency)
-            return i;
-    }
-    return 0xFFFF;
-}*/
 
 typedef struct HistoryStruct {
     uint32_t HFreqs;
@@ -519,6 +514,7 @@ typedef struct HistoryStruct {
     uint8_t HBlacklisted;
 } HistoryStruct;
 
+#ifdef ENABLE_EEPROM_512K
 void ReadHistory() {
     HistoryStruct History= {0};
     for (uint16_t position = 0; position < HISTORY_SIZE; position++) {
@@ -540,6 +536,8 @@ void WriteHistory() {
       EEPROM_WriteBuffer(0x5390 + position * sizeof(HistoryStruct), (uint8_t *)&History);
     }
 }
+#endif
+
 /////////////////////////////EEPROM://///////////////////////////*/
 
 static void ExitAndCopyToVfo() {
@@ -2572,8 +2570,10 @@ static void LoadSettings()
   BK4819_WriteRegister(BK4819_REG_29, eepromData.R29);
   BK4819_WriteRegister(BK4819_REG_19, eepromData.R19);
   BK4819_WriteRegister(BK4819_REG_73, eepromData.R73);
+#ifdef ENABLE_EEPROM_512K
   ReadHistory();
-  }
+#endif
+}
 
 static void SaveSettings() 
 {
@@ -2607,8 +2607,10 @@ static void SaveSettings()
   // Write in 8-byte chunks
   for (uint16_t addr = 0; addr < sizeof(eepromData); addr += 8) 
     EEPROM_WriteBuffer(addr + 0x1D10, ((uint8_t*)&eepromData) + addr);
+#ifdef ENABLE_EEPROM_512K
   WriteHistory();
-  }
+#endif
+}
 
 static void ClearSettings() 
 {

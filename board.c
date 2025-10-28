@@ -586,10 +586,13 @@ void BOARD_EEPROM_Init(void)
 	{
 		gEeprom.ScreenChannel = gEeprom.MrChannel;
 	}
-
+#ifdef ENABLE_EEPROM_512K
 	EEPROM_ReadBuffer(0x3900, gMR_ChannelAttributes, 200);
 	EEPROM_ReadBuffer(0x39C8, gMR_ChannelAttributes + 0xC8, 200);
-	for(uint16_t i = 0; i < 400; i++) {
+#else
+	EEPROM_ReadBuffer(0x0D60, gMR_ChannelAttributes, 200);
+#endif
+	for(uint16_t i = 0; i < MR_CHANNEL_LAST+1; i++) {
 		ChannelAttributes_t *att = &gMR_ChannelAttributes[i];
 		if(att->__val == 0xff){
 			att->__val = 0;
@@ -673,8 +676,11 @@ uint32_t BOARD_fetchChannelFrequency(const uint16_t Channel)
 		uint32_t frequency;
 		uint32_t offset;
 	} __attribute__((packed)) info;
-
+#ifdef ENABLE_EEPROM_512K
 	EEPROM_ReadBuffer(0x2000 + Channel * 16, &info, sizeof(info));
+#else 
+	EEPROM_ReadBuffer(0x0000 + Channel * 16, &info, sizeof(info));
+#endif
 
 	return info.frequency;
 }
@@ -696,6 +702,8 @@ void BOARD_FactoryReset()
 	memset(Template, 0xFF, sizeof(Template));
 	//Don't erase Calibration
 	for (i = 0x0000; i < 0x1E00; i += 8) EEPROM_WriteBuffer(i, Template);
+#ifdef ENABLE_EEPROM_512K
 	for (i = 0x2000; i < 0x6000; i += 8) EEPROM_WriteBuffer(i, Template);
+#endif
 
 }
