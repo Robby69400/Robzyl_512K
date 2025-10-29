@@ -139,13 +139,6 @@ void DrawNumeric(void)
 	uint16_t rssi  = gCurrentRSSI;
     //uint8_t glitch = BK4819_GetGlitchIndicator();
     //uint16_t noise = BK4819_GetExNoiseIndicator();
-  	
-	uint8_t afcspeed = 18;//9-63
-  	uint8_t afcrange = 0;//0-7
-  	bool  disableafc = 0;
-
-	
-	
 	uint32_t cdcssFreq;
 	uint16_t ctcssFreq;
     uint8_t code = 0;
@@ -153,8 +146,6 @@ void DrawNumeric(void)
 	char buf2[32]= "";
 
 	if(gCurrentFunction == FUNCTION_RECEIVE || gCurrentFunction == FUNCTION_MONITOR || gCurrentFunction == FUNCTION_INCOMING) {
-		BK4819_WriteRegister(0x73, 0x4005 | (afcrange << 11) | (afcspeed << 5) | (disableafc << 4) );
-		SYSTEM_DelayMs(10);
 		int32_t hz = afc_to_deviation_hz(BK4819_ReadRegister(0x6D));
     	memset(&gFrameBuffer[0][0], 0, 2 * 128);
 		//sprintf(buf, "GL:%3u RS:%3u NO:%3u",glitch, rssi, noise );

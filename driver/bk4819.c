@@ -118,6 +118,11 @@ void BK4819_Init(void)
 
 	BK4819_WriteRegister(BK4819_REG_33, 0x9000);
 	BK4819_WriteRegister(BK4819_REG_3F, 0);
+	/*uint8_t afcspeed = 18;//9-63
+  	uint8_t afcrange = 0;//0-7
+  	bool  disableafc = 0;
+	BK4819_WriteRegister(0x73, 0x4005 | (afcrange << 11) | (afcspeed << 5) | (disableafc << 4) );*/
+	BK4819_WriteRegister(BK4819_REG_73, 0x4692);
 }
 
 static uint16_t BK4819_ReadU16(void) {
