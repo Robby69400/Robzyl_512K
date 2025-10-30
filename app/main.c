@@ -303,43 +303,29 @@ static void MAIN_Key_MENU(const bool bKeyPressed, const bool bKeyHeld)
 static void MAIN_Key_UP_DOWN(bool bKeyPressed, bool bKeyHeld, int8_t Direction)
 {
 	uint16_t Channel = gEeprom.ScreenChannel;
-            
-	if (bKeyHeld || !bKeyPressed)
-	{
-		if (gInputBoxIndex > 0) return;
-
-		if (!bKeyPressed)
-		{
-			if (!bKeyHeld) return;
-			if (IS_FREQ_CHANNEL(Channel))return;
-			return;
-		}
-	}
-
-	else {if (gInputBoxIndex > 0)	return;}
+	if (!bKeyPressed && !bKeyHeld) return;
+	if (gInputBoxIndex > 0)	return;
 
 	uint16_t Next;
-	
+
 	if (IS_FREQ_CHANNEL(Channel))
-	{	// step/down in frequency
-		const uint32_t frequency = APP_SetFrequencyByStep(gTxVfo, Direction);
+	{
+		uint32_t frequency = APP_SetFrequencyByStep(gTxVfo, Direction);
 		if (RX_freq_check(frequency) == 0xFF) return;
 		gTxVfo->freq_config_RX.Frequency = frequency;
 		BK4819_SetFrequency(frequency);
 		gRequestSaveChannel = 1;
 		return;
 	}
-	else {
-		Next = RADIO_FindNextChannel(Channel + Direction, Direction, false,0);
-		if (Next == 0xFFFF) return;
-		if (Channel == Next) return;
-		gEeprom.MrChannel     = Next;
-		gEeprom.ScreenChannel = Next;
-	}
-	gRequestSaveVFO   = true;
-	gVfoConfigureMode = VFO_CONFIGURE_RELOAD;
-	gPttWasReleased = true;
+	Next = RADIO_FindNextChannel(Channel + Direction, Direction, false, 0);
+	if (Next == 0xFFFF || Next == Channel) return;
+	gEeprom.MrChannel     = Next;
+	gEeprom.ScreenChannel = Next;
+	gRequestSaveVFO       = true;
+	gVfoConfigureMode     = VFO_CONFIGURE_RELOAD;
+	gPttWasReleased       = true;
 }
+
 
 void MAIN_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 {

@@ -1122,8 +1122,7 @@ static void ProcessKey(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 	}
 	else if (gPttWasReleased)
 	{
-		if (bKeyHeld)
-			bFlag = true;
+		//if (bKeyHeld) bFlag = true;
 		if (!bKeyPressed)
 		{
 			bFlag           = true;

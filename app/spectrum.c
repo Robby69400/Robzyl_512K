@@ -196,6 +196,7 @@ const RegisterSpec allRegisterSpecs[] = {
     {"MIC AGC Disable", 0x19, 15, 1, 1},
     {"AFC Range Select", 0x73, 11, 0b111, 1},
     {"AFC Disable", 0x73, 4, 1, 1},
+    {"AFC Speed", 0x73, 5, 0b111111, 1},
 
 
     /*
