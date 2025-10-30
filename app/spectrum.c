@@ -959,6 +959,7 @@ static void FreqInput() {
   freqInputDotIndex = 0;
   ResetFreqInput();
   SetState(FREQ_INPUT);
+  Key_1_pressed = 1;
 }
 
 static void UpdateFreqInput(KEY_Code_t key) {
@@ -1659,7 +1660,7 @@ static void OnKeyDown(uint8_t key) {
                 }
                 else parametersSelectedIndex = 0;
                 break;
-          case KEY_3: // Scan list selection
+          case KEY_3:
           case KEY_1:
           {
               bool isKey3 = (key == KEY_3);
@@ -1694,7 +1695,6 @@ static void OnKeyDown(uint8_t key) {
                       if (!isKey3) {
                           appMode = SCAN_RANGE_MODE;
                           FreqInput();
-                          Key_1_pressed = 1;
                       }
                       break;
 
@@ -2531,8 +2531,7 @@ static void LoadSettings()
     SLRssiTriggerLevelUp[i] = eepromData.SLRssiTriggerLevelUp[i];
   }
   settings.rssiTriggerLevelUp = eepromData.Trigger;
-  if (eepromData.listenBw >0 && eepromData.listenBw <7) settings.listenBw = eepromData.listenBw;
-
+  settings.listenBw = eepromData.listenBw;
   if (eepromData.RangeStart > 1400000) gScanRangeStart = eepromData.RangeStart;
   if (eepromData.RangeStop > 1400000) gScanRangeStop = eepromData.RangeStop;
   settings.scanStepIndex = eepromData.scanStepIndex;
