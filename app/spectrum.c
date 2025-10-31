@@ -8,7 +8,7 @@
 #include "action.h"
 #include "bands.h"
 #include "ui/main.h"
-//#include "debugging.h"
+#include "debugging.h"
 
 
 #ifdef ENABLE_SCREENSHOT
@@ -501,13 +501,28 @@ static void DeInitSpectrum(bool ComeBack) {
 
 /////////////////////////////EEPROM://///////////////////////////
 
+void TrimTrailingChars(char *str) {
+    int len = strlen(str);
+    while (len > 0) {
+        unsigned char c = str[len - 1];
+        if (c == '\0' || c == 0x20 || c == 0xFF)  // fin de chaîne, espace, EEPROM vide
+            len--;
+        else
+            break;
+    }
+    str[len] = '\0';
+}
+
+
 void ReadChannelName(uint16_t Channel, char *name) {
 #ifdef ENABLE_EEPROM_512K
-    EEPROM_ReadBuffer(0x3A90 + Channel * 16, (uint8_t *)name, 16);	
+    EEPROM_ReadBuffer(0x3A90 + Channel * 16, (uint8_t *)name, 12);
 #else 
-	  EEPROM_ReadBuffer(0x0F50 + Channel * 16, (uint8_t *)name, 16);
+    EEPROM_ReadBuffer(0x0F50 + Channel * 16, (uint8_t *)name, 12);
 #endif
+TrimTrailingChars(name);
 }
+
 
 typedef struct HistoryStruct {
     uint32_t HFreqs;
@@ -1180,23 +1195,14 @@ switch(SpectrumMonitor) {
 }
 
 static void formatHistory(char *buf, uint8_t index, uint16_t Channel, uint32_t freq) {
-    char freqStr[16];
+    char freqStr[10];
     char Name[12];
-    snprintf(freqStr, sizeof(freqStr), "%u.%05u", freq/100000, freq%100000);
+    snprintf(freqStr, sizeof(freqStr), "%u.%05u", freq / 100000, freq % 100000);
     RemoveTrailZeros(freqStr);
-
-    if(Channel != 0xFFFF) {
-        ReadChannelName(Channel,Name);
-        snprintf(buf, 19, "%s(%u)", 
-                Name,
-                HCount[index]);
-                
-    } else {
-        snprintf(buf, 19, "%s(%u)", 
-                freqStr,
-                HCount[index]);
-        }
+    if (Channel != 0xFFFF) ReadChannelName(Channel, Name);
+    snprintf(buf, 19, "%s %s:%u", freqStr,Name, HCount[index]);
 }
+
 
 // ------------------ Popups ------------------
 static bool HandlePopup(void) {
@@ -1274,7 +1280,7 @@ static void DrawF(uint32_t f) {
     ReadChannelName(channelFd,channelName);
     char line1[19] = "";
     char line2[19] = "";
-    char line3[19] = "";
+    char line3[32] = "";
     
     if (ShowLines > 0 || !classic)
     strncpy(line1, freqStr, sizeof(line1)-1);
@@ -2621,6 +2627,17 @@ static void ClearSettings()
   BK4819_WriteRegister(BK4819_REG_29, 0xAB40);
   BK4819_WriteRegister(BK4819_REG_19, 0x1041);
   BK4819_WriteRegister(BK4819_REG_73, 0x4692);
+  //Clear History
+  memset(HFreqs,0,sizeof(HFreqs));
+  memset(HCount,0,sizeof(HCount));
+  memset(HBlacklisted,0,sizeof(HBlacklisted));
+  historyListIndex = 0;
+  historyScrollOffset = 0;
+  indexFs = HISTORY_SIZE;
+  #ifdef ENABLE_EEPROM_512K
+  WriteHistory();
+  #endif
+  indexFs = 0;
   SaveSettings(); 
 }
 
@@ -2742,27 +2759,17 @@ static void GetParametersText(uint8_t index, char *buffer) {
 
 static void GetHistoryItemText(uint8_t index, char* buffer) {
         
-    char freqStr[16];
-    char Name[12];
+    char freqStr[10];
+    char Name[12]="";
     uint8_t dcount;
-    sprintf(freqStr, "%u.%05u", HFreqs[index] / 100000, HFreqs[index] % 100000);
+    snprintf(freqStr, sizeof(freqStr), "%u.%05u", HFreqs[index]/100000, HFreqs[index]%100000);
     RemoveTrailZeros(freqStr);
     uint16_t Hchannel = BOARD_gMR_fetchChannel(HFreqs[index]);
     
     if(gCounthistory) dcount = HCount[index];
     else dcount = HCount[index]/2;
-    if (Hchannel != 0xFFFF) {
-        ReadChannelName(Hchannel,Name);
-        sprintf(buffer, "%s%s:%d", 
-                HBlacklisted[index] ? "#" : "",
-                Name,
-                dcount);
-    } else {
-        sprintf(buffer, "%s%s:%d", 
-                HBlacklisted[index] ? "#" : "",
-                freqStr,
-                dcount);
-    }
+    if (Hchannel != 0xFFFF) ReadChannelName(Hchannel,Name);
+    snprintf(buffer,19, "%s%s %s:%u", HBlacklisted[index] ? "#" : "",freqStr,Name,dcount);
 }
 
 static void RenderList(const char* title, uint8_t numItems, uint8_t selectedIndex, uint8_t scrollOffset,
