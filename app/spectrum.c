@@ -33,7 +33,7 @@ uint8_t HCount[HISTORY_SIZE]= {0};
 bool HBlacklisted[HISTORY_SIZE]= {0};
 
 /////////////////////////////Parameters://///////////////////////////
-// see parametersSelectedIndex
+//SEE HERE parametersSelectedIndex
 // see GetParametersText
 uint8_t DelayRssi = 4;                          // 1
 uint8_t PttEmission = 0;                        // 2
@@ -45,7 +45,8 @@ uint32_t gScanRangeStop = 13000000;             // 5
 //Modulation                                    // 8
 //ClearSettings                                 // 9
 bool gCounthistory = 1;                         // 10
-#define PARAMETER_COUNT 10
+//ClearHistory                                  //11
+#define PARAMETER_COUNT 11
 ////////////////////////////////////////////////////////////////////
 
 
@@ -78,6 +79,7 @@ static uint8_t bandListSelectedIndex = 0;
 static int bandListScrollOffset = 0;
 static void RenderBandSelect();
 static void ClearSettings();
+static void ClearHistory();
 void DrawMeter(int);
 uint8_t scanListSelectedIndex = 0;
 uint8_t scanListScrollOffset = 0;
@@ -514,12 +516,8 @@ void TrimTrailingChars(char *str) {
 
 
 void ReadChannelName(uint16_t Channel, char *name) {
-#ifdef ENABLE_EEPROM_512K
-    EEPROM_ReadBuffer(0x3A90 + Channel * 16, (uint8_t *)name, 12);
-#else 
-    EEPROM_ReadBuffer(0x0F50 + Channel * 16, (uint8_t *)name, 12);
-#endif
-TrimTrailingChars(name);
+    EEPROM_ReadBuffer(ADRESS_NAMES + Channel * 16, (uint8_t *)name, 12);
+    TrimTrailingChars(name);
 }
 
 
@@ -533,7 +531,7 @@ typedef struct HistoryStruct {
 void ReadHistory() {
     HistoryStruct History= {0};
     for (uint16_t position = 0; position < HISTORY_SIZE; position++) {
-    EEPROM_ReadBuffer(0x5390 + position * sizeof(HistoryStruct), (uint8_t *)&History, sizeof(HistoryStruct));
+    EEPROM_ReadBuffer(ADRESS_HISTORY + position * sizeof(HistoryStruct), (uint8_t *)&History, sizeof(HistoryStruct));
     if (History.HBlacklisted > 1) return;
     HFreqs[position] = History.HFreqs;
     HCount[position] = History.HCount;
@@ -548,7 +546,7 @@ void WriteHistory() {
       History.HFreqs = HFreqs[position];
       History.HCount = HCount[position];
       History.HBlacklisted = HBlacklisted[position];
-      EEPROM_WriteBuffer(0x5390 + position * sizeof(HistoryStruct), (uint8_t *)&History);
+      EEPROM_WriteBuffer(ADRESS_HISTORY + position * sizeof(HistoryStruct), (uint8_t *)&History);
     }
 }
 #endif
@@ -877,9 +875,9 @@ LogUart(str); */
 
 
 static void UpdateDBMaxAuto() {
-  static uint8_t z = 3;
+  static uint8_t z = 2;
     if (scanInfo.rssiMax > 0) {
-        int newDbMax = clamp(Rssi2DBm(scanInfo.rssiMax), -60, 60);
+        int newDbMax = clamp(Rssi2DBm(scanInfo.rssiMax), -130, 60);
 
         if (newDbMax > settings.dbMax + z) {
             settings.dbMax = settings.dbMax + z;   // montée limitée
@@ -891,7 +889,7 @@ static void UpdateDBMaxAuto() {
     }
 
     if (scanInfo.rssiMin > 0) {
-        settings.dbMin = clamp(Rssi2DBm(scanInfo.rssiMin), -160, 100);
+        settings.dbMin = clamp(Rssi2DBm(scanInfo.rssiMin), -160, 0);
     }
 }
 
@@ -1274,7 +1272,7 @@ static void DrawF(uint32_t f) {
     f = HFreqs[historyListIndex];
     uint16_t channelFd = BOARD_gMR_fetchChannel(f);
     isKnownChannel = (channelFd != 0xFFFF);
-    ReadChannelName(channelFd,channelName);
+    
     char line1[19] = "";
     char line2[19] = "";
     char line3[32] = "";
@@ -1294,17 +1292,20 @@ static void DrawF(uint32_t f) {
         if (appMode == SCAN_BAND_MODE) {
             snprintf(prefix, sizeof(prefix), "B%u ", bl + 1);
         } else if (appMode == CHANNEL_MODE) {
-            if (enabledLists[0])
-                snprintf(prefix, sizeof(prefix), "S%s ", enabledLists);
-            else
-                snprintf(prefix, sizeof(prefix), "ALL ");
-        }
-
-        if (isKnownChannel && channelName[0] && isListening) {
-            snprintf(line2, sizeof(line2), "%-3s%s", prefix, channelName);
-        } else {
-            snprintf(line2, sizeof(line2), "%s", prefix);
-        }
+                if (gNextTimeslice_1s){
+                  ReadChannelName(channelFd,channelName);
+                  gNextTimeslice_1s = 0;
+                }
+                if (enabledLists[0])
+                        snprintf(prefix, sizeof(prefix), "S%s ", enabledLists);
+                    else
+                        snprintf(prefix, sizeof(prefix), "ALL ");
+                    if (isKnownChannel && channelName[0] && isListening) {
+                        snprintf(line2, sizeof(line2), "%-3s%s", prefix, channelName);
+                    } else {
+                        snprintf(line2, sizeof(line2), "%s", prefix);
+                    }
+                }
         if (appMode == SCAN_BAND_MODE) {
             snprintf(line2, sizeof(line2), "%-3s%s", prefix, BParams[bl].BandName);
         }
@@ -1344,13 +1345,10 @@ void LookupChannelInfo() {
   }
 
 void LookupChannelModulation() {
-	  uint16_t base;
-		base = 0x2000 + gChannel * 16;
-
-		uint8_t tmp;
+	  uint8_t tmp;
 		uint8_t data[8];
 
-		EEPROM_ReadBuffer(base + 8, data, sizeof(data));
+		EEPROM_ReadBuffer(ADRESS_FREQ_PARAMS + gChannel * 16 + 8, data, sizeof(data));
 
 		tmp = data[3] >> 4;
 		if (tmp >= MODULATION_UKNOWN)
@@ -1514,7 +1512,7 @@ static void OnKeyDown(uint8_t key) {
                 break;
 				
 				        // NOWA FUNKCJA: Przejście do wybranego zakresu po wciśnięciu MENU
-        case KEY_MENU:
+            case KEY_MENU:
             if (bandListSelectedIndex < ARRAY_SIZE(BParams)) {
                 memset(settings.bandEnabled, 0, sizeof(settings.bandEnabled));
                 settings.bandEnabled[bandListSelectedIndex] = true;
@@ -1666,7 +1664,7 @@ static void OnKeyDown(uint8_t key) {
               bool isKey3 = (key == KEY_3);
               bool redrawNeeded = false;
           
-              switch(parametersSelectedIndex) {//SEE HERE
+              switch(parametersSelectedIndex) {//SEE HERE parametersSelectedIndex
                   case 0: // DelayRssi
                       DelayRssi = isKey3 ? 
                                  (DelayRssi >= 12 ? 0 : DelayRssi + 1) :
@@ -1717,6 +1715,9 @@ static void OnKeyDown(uint8_t key) {
                       break;
                   case 9: // gCounthistory
                         gCounthistory=!gCounthistory;
+                      break;
+                  case 10: // ClearHistory
+                        if (isKey3) ClearHistory();
                       break;
               }
             
@@ -1895,7 +1896,11 @@ static void OnKeyDown(uint8_t key) {
     break;
 
   case KEY_0:
-    //Free
+    if (!historyListActive) {
+        historyListActive = true;
+        historyListIndex = 0;
+        historyScrollOffset = 0;
+        }
     break;
   
     case KEY_6:    //Next Mode
@@ -2226,29 +2231,16 @@ static void Render() {
   ST7565_BlitFullScreen();
 }
 
-bool HandleUserInput() {
+void HandleUserInput(void) {
     kbd.prev = kbd.current;
     kbd.current = GetKey();
-    if (kbd.current != KEY_INVALID && kbd.current == kbd.prev) {
-        if (kbd.counter < 16) kbd.counter++;
-        else
-            kbd.counter -= 3;
-        SYSTEM_DelayMs(20);
-    } else {
-        kbd.counter = 0;
-    } 
-
-    if (kbd.counter == 3 || kbd.counter == 16) {
     
-        if (kbd.current == KEY_0) {
-            if (!historyListActive) {
-                historyListActive = true;  
-                historyListIndex = 0;
-				        historyScrollOffset = 0;
-                return true;
-            }
-    }
+    // ---- Anti-rebond / maintien ----
+    if (kbd.current != KEY_INVALID && kbd.current == kbd.prev) {kbd.counter++;}
+    else {kbd.counter = 0;}
 
+    if (kbd.counter == 2) {
+        
         switch (currentState) {
             case SPECTRUM:
                 OnKeyDown(kbd.current);
@@ -2259,7 +2251,7 @@ bool HandleUserInput() {
             case STILL:
                 OnKeyDownStill(kbd.current);
                 break;
-			      case BAND_LIST_SELECT: 
+            case BAND_LIST_SELECT:
                 OnKeyDown(kbd.current);
                 break;
             case SCANLIST_SELECT:
@@ -2268,16 +2260,15 @@ bool HandleUserInput() {
             case PARAMETERS_SELECT:
                 OnKeyDown(kbd.current);
                 break;
-#ifdef ENABLE_SCANLIST_SHOW_DETAIL
-            case SCANLIST_CHANNELS: // NOWY CASE
+        #ifdef ENABLE_SCANLIST_SHOW_DETAIL
+            case SCANLIST_CHANNELS:
                 OnKeyDown(kbd.current);
                 break;
-#endif // ENABLE_SCANLIST_SHOW_DETAIL
+        #endif
         }
-        return true;
     }
-    return false;
 }
+
 
 static void UpdateScan() {
   if(gIsPeak || SpectrumMonitor || WaitSpectrum) return;
@@ -2592,6 +2583,21 @@ static void SaveSettings()
 #endif
 }
 
+static void ClearHistory() 
+{
+  memset(HFreqs,0,sizeof(HFreqs));
+  memset(HCount,0,sizeof(HCount));
+  memset(HBlacklisted,0,sizeof(HBlacklisted));
+  historyListIndex = 0;
+  historyScrollOffset = 0;
+  indexFs = HISTORY_SIZE;
+  #ifdef ENABLE_EEPROM_512K
+  WriteHistory();
+  #endif
+  indexFs = 0;
+  SaveSettings(); 
+}
+
 static void ClearSettings() 
 {
   for (int i = 1; i < 15; i++) {
@@ -2618,19 +2624,12 @@ static void ClearSettings()
   BK4819_WriteRegister(BK4819_REG_29, 0xAB40);
   BK4819_WriteRegister(BK4819_REG_19, 0x1041);
   BK4819_WriteRegister(BK4819_REG_73, 0x4692);
-  //Clear History
-  memset(HFreqs,0,sizeof(HFreqs));
-  memset(HCount,0,sizeof(HCount));
-  memset(HBlacklisted,0,sizeof(HBlacklisted));
-  historyListIndex = 0;
-  historyScrollOffset = 0;
-  indexFs = HISTORY_SIZE;
-  #ifdef ENABLE_EEPROM_512K
-  WriteHistory();
-  #endif
-  indexFs = 0;
+  ClearHistory();
   SaveSettings(); 
 }
+
+
+
 
 static bool GetScanListLabel(uint8_t scanListIndex, char* bufferOut) {
     ChannelAttributes_t att;
@@ -2732,6 +2731,9 @@ static void GetParametersText(uint8_t index, char *buffer) {
         case 9:
             if (gCounthistory) sprintf(buffer, "Freq Counting");
             else sprintf(buffer, "Time Counting");
+            break;
+        case 10:
+            sprintf(buffer, "CLEAR HISTORY: 3");
             break;
         default:
             // Gestion d'un index inattendu (optionnel)

@@ -1,3 +1,6 @@
+// frequencies are 10Hz: 100M is written 10000000
+
+
 #ifdef ENABLE_FR_BAND
 static const bandparameters BParams[32] = {
     // BandName       Startfrequency    Stopfrequency   scanStep          modulationType

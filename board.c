@@ -587,10 +587,13 @@ void BOARD_EEPROM_Init(void)
 		gEeprom.ScreenChannel = gEeprom.MrChannel;
 	}
 #ifdef ENABLE_EEPROM_512K
-	EEPROM_ReadBuffer(0x3900, gMR_ChannelAttributes, 200);
-	EEPROM_ReadBuffer(0x39C8, gMR_ChannelAttributes + 0xC8, 200);
+	EEPROM_ReadBuffer(ADRESS_ATTRIBUTES         , gMR_ChannelAttributes			, 200);
+	EEPROM_ReadBuffer(ADRESS_ATTRIBUTES + 0x00C8, gMR_ChannelAttributes + 0x00C8, 200);
+	EEPROM_ReadBuffer(ADRESS_ATTRIBUTES + 0x0190, gMR_ChannelAttributes + 0x0190, 200);
+	EEPROM_ReadBuffer(ADRESS_ATTRIBUTES + 0x0258, gMR_ChannelAttributes + 0x0258, 200);
+	EEPROM_ReadBuffer(ADRESS_ATTRIBUTES + 0x0320, gMR_ChannelAttributes + 0x0320, 200);
 #else
-	EEPROM_ReadBuffer(0x0D60, gMR_ChannelAttributes, 200);
+	EEPROM_ReadBuffer(ADRESS_ATTRIBUTES			, gMR_ChannelAttributes, 		  200);
 #endif
 	for(uint16_t i = 0; i < MR_CHANNEL_LAST+1; i++) {
 		ChannelAttributes_t *att = &gMR_ChannelAttributes[i];
@@ -721,12 +724,8 @@ uint32_t BOARD_fetchChannelFrequency(const uint16_t Channel)
 		uint32_t frequency;
 		uint32_t offset;
 	} __attribute__((packed)) info;
-#ifdef ENABLE_EEPROM_512K
-	EEPROM_ReadBuffer(0x2000 + Channel * 16, &info, sizeof(info));
-#else 
-	EEPROM_ReadBuffer(0x0000 + Channel * 16, &info, sizeof(info));
-#endif
 
+	EEPROM_ReadBuffer(ADRESS_FREQ_PARAMS + Channel * 16, &info, sizeof(info));
 	return info.frequency;
 }
 uint16_t BOARD_gMR_fetchChannel(const uint32_t freq)
@@ -748,7 +747,7 @@ void BOARD_FactoryReset()
 	//Don't erase Calibration
 	for (i = 0x0000; i < 0x1E00; i += 8) EEPROM_WriteBuffer(i, Template);
 #ifdef ENABLE_EEPROM_512K
-	for (i = 0x2000; i < 0x6000; i += 8) EEPROM_WriteBuffer(i, Template);
+	for (i = ADRESS_FREQ_PARAMS; i < ADRESS_HISTORY; i += 8) EEPROM_WriteBuffer(i, Template);
 #endif
 
 }

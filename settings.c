@@ -118,12 +118,7 @@ void SETTINGS_SaveChannel(uint16_t Channel, const VFO_Info_t *pVFO, uint8_t Mode
 {
 
 	{
-#ifdef ENABLE_EEPROM_512K
-		uint16_t OffsetVFO = 0x2000 + Channel * 16;
-#else 
-		uint16_t OffsetVFO = Channel * 16;
-#endif
-
+		uint16_t OffsetVFO = ADRESS_FREQ_PARAMS + Channel * 16;
 		if (!IS_MR_CHANNEL(Channel))
 		{	// it's a VFO, not a Channel
 			OffsetVFO  = 0x0C80;
@@ -191,13 +186,8 @@ void SETTINGS_SaveChannelName(uint16_t Channel, const char * name)
 	uint8_t  buf[16];
 	memset(&buf, 0x00, sizeof(buf));
 	memcpy(buf, name, MIN(strlen(name),10u));
-#ifdef ENABLE_EEPROM_512K
-	EEPROM_WriteBuffer(0x3A90 + offset, buf); 
-	EEPROM_WriteBuffer(0x3A98 + offset, buf + 8);	
-#else 
-	EEPROM_WriteBuffer(0x0F50 + offset, buf); 
-	EEPROM_WriteBuffer(0x0F58 + offset, buf + 8);	
-#endif
+	EEPROM_WriteBuffer(ADRESS_NAMES + offset, buf); 
+	EEPROM_WriteBuffer(ADRESS_NAMES + 0x0008 + offset, buf + 8);	
 }
 
 
@@ -215,13 +205,9 @@ void SETTINGS_FetchChannelName(char *s, const uint16_t Channel)
 
 	if (!RADIO_CheckValidChannel(Channel, false,0)) return;
 
-#ifdef ENABLE_EEPROM_512K
-	EEPROM_ReadBuffer(0x3A90 + (Channel * 16), s + 0, 8);
-	EEPROM_ReadBuffer(0x3A98 + (Channel * 16), s + 8, 2);
-#else 
-	EEPROM_ReadBuffer(0x0F50 + (Channel * 16), s + 0, 8);
-	EEPROM_ReadBuffer(0x0F58 + (Channel * 16), s + 8, 2);
-#endif
+	EEPROM_ReadBuffer(ADRESS_NAMES + (Channel * 16), s + 0, 8);
+	EEPROM_ReadBuffer(ADRESS_NAMES + 0x0008 + (Channel * 16), s + 8, 2);
+
 
 
 	for (i = 0; i < 10; i++)
@@ -242,11 +228,8 @@ void SETTINGS_UpdateChannel(uint16_t Channel, const VFO_Info_t *pVFO, bool keep)
 			.band = 0xf,
 			.scanlist = 0,
 			};        // default attributes
-#ifdef ENABLE_EEPROM_512K
-		uint16_t offset = 0x3900 + (Channel & ~7u);
-#else 
-		uint16_t offset = 0x0D60 + (Channel & ~7u);
-#endif
+		uint16_t offset = ADRESS_ATTRIBUTES + (Channel & ~7u);
+
 		EEPROM_ReadBuffer(offset, state, sizeof(state));
 
 		if (keep) {

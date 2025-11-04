@@ -46,9 +46,16 @@
 enum {
 	MR_CHANNEL_FIRST   = 0,
 #ifdef ENABLE_EEPROM_512K
-	MR_CHANNEL_LAST    = 399u,
+	MR_CHANNEL_LAST    = 	999u,
+	ADRESS_FREQ_PARAMS = 	0x2000,
+	ADRESS_ATTRIBUTES = 	0x5E80,
+	ADRESS_NAMES = 			0x6280,
+	ADRESS_HISTORY = 		0xA100,
 #else
 	MR_CHANNEL_LAST    = 199u,
+	ADRESS_FREQ_PARAMS = 	0x0000,
+	ADRESS_ATTRIBUTES = 	0x0D60,
+	ADRESS_NAMES = 			0x0F50,
 #endif
 	FREQ_CHANNEL_FIRST = MR_CHANNEL_LAST+1,
 	FREQ_CHANNEL_LAST  = MR_CHANNEL_LAST+7,
@@ -180,6 +187,7 @@ extern volatile uint16_t     gDualWatchCountdown_10ms;
 extern bool                  gDualWatchActive;
 extern volatile uint8_t      gSerialConfigCountDown_500ms;
 extern volatile bool         gNextTimeslice_500ms;
+extern volatile bool		 gNextTimeslice_1s;
 extern volatile bool         gNextTimeslice_vfo_nums;
 extern volatile bool         gNextTimeslice_display;
 extern volatile uint16_t     gTxTimerCountdown_500ms;

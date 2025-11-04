@@ -84,6 +84,7 @@ bool              gDualWatchActive           = false;
 volatile uint8_t  gSerialConfigCountDown_500ms;
 
 volatile bool     gNextTimeslice_500ms;
+volatile bool     gNextTimeslice_1s;
 volatile bool     gNextTimeslice_vfo_nums;
 volatile bool     gNextTimeslice_display;
 

@@ -159,11 +159,7 @@ void RADIO_ConfigureChannel(const unsigned int configure)
 
 	uint16_t base;
 	if (IS_MR_CHANNEL(Channel))
-#ifdef ENABLE_EEPROM_512K
-		base = 0x2000 + Channel * 16;	
-#else
-		base = 0x0000 + Channel * 16;
-#endif
+		base = ADRESS_FREQ_PARAMS + Channel * 16;	
 	else
 		base = 0x0C80 + ((Channel - FREQ_CHANNEL_FIRST) * 32);
 

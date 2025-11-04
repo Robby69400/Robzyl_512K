@@ -94,8 +94,6 @@ const int CHANNEL_ONLY_SETTINGS[] = {
 	MENU_MEM_NAME,
 };
 
-const int VFO_ONLY_SETTINGS[] = {};
-
 const uint8_t FIRST_HIDDEN_MENU_ITEM = MENU_RESET;
 
 const char gSubMenu_TXP[][5] =
@@ -684,31 +682,17 @@ void MENU_PrintNotAllowed()
 	UI_PrintString(String, menu_item_x1, menu_item_x2, 0, 8);
 	strcpy(String, "ALLOWED");
 	UI_PrintString(String, menu_item_x1, menu_item_x2, 2, 8);
+	strcpy(String, "IN VFO");
+	UI_PrintString(String, menu_item_x1, menu_item_x2, 4, 8);
 }
 
 bool UI_MENU_IsAllowedToEdit(int menu_id)
 {
 	bool isChannelOnlySetting;
-	bool isVfoOnlySetting;
-	
 	isChannelOnlySetting =
 		IsValueInArray(menu_id, CHANNEL_ONLY_SETTINGS, sizeof(CHANNEL_ONLY_SETTINGS));
-	isVfoOnlySetting =
-		IsValueInArray(menu_id, VFO_ONLY_SETTINGS, sizeof(VFO_ONLY_SETTINGS));
-
-	if (isChannelOnlySetting && !IS_MR_CHANNEL(gTxVfo->CHANNEL_SAVE))
-	{
-		return false;
-	}
-	// if we are in Channel mode and 
-	else if (isVfoOnlySetting && IS_MR_CHANNEL(gTxVfo->CHANNEL_SAVE))
-	{
-		return false;
-	}
-	// otherwise we can edit this field
-	else
-	{
-		return true;
-	}
+	
+	if (isChannelOnlySetting && !IS_MR_CHANNEL(gTxVfo->CHANNEL_SAVE)) return false;
+	return true;
 	
 }
