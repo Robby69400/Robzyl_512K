@@ -8,7 +8,6 @@
 #include "action.h"
 #include "bands.h"
 #include "ui/main.h"
-#include "board.h"
 //#include "debugging.h"
 
 
@@ -574,7 +573,7 @@ if (historyListActive == true){
             randomChannel++;
             if (randomChannel >scanChannelsCount)randomChannel = 1;
             if (i>200) break;}
-          rndfreq = reconstructFreq(scanChannel[randomChannel]);
+          rndfreq = gMR_ChannelFrequencyAttributes[scanChannel[randomChannel]].Frequency;
           SETTINGS_SetVfoFrequency(rndfreq);
           gEeprom.MrChannel     = scanChannel[randomChannel];
 			    gEeprom.ScreenChannel = scanChannel[randomChannel];
@@ -774,7 +773,7 @@ static bool InitScan() {
       }
     if (appMode == CHANNEL_MODE) {
       uint16_t currentChannel = scanChannel[0];
-      scanInfo.f = reconstructFreq(currentChannel); 
+      scanInfo.f = gMR_ChannelFrequencyAttributes[currentChannel].Frequency; 
     }
     //BK4819_SetFilterBandwidth(settings.listenBw, false);
     return scanInitializedSuccessfully;
@@ -877,7 +876,7 @@ LogUart(str); */
 static void UpdateDBMaxAuto() {
   static uint8_t z = 2;
     if (scanInfo.rssiMax > 0) {
-        int newDbMax = clamp(Rssi2DBm(scanInfo.rssiMax), -130, 60);
+        int newDbMax = clamp(Rssi2DBm(scanInfo.rssiMax), -100, 60);
 
         if (newDbMax > settings.dbMax + z) {
             settings.dbMax = settings.dbMax + z;   // montée limitée
@@ -889,7 +888,7 @@ static void UpdateDBMaxAuto() {
     }
 
     if (scanInfo.rssiMin > 0) {
-        settings.dbMin = clamp(Rssi2DBm(scanInfo.rssiMin), -160, 0);
+        settings.dbMin = clamp(Rssi2DBm(scanInfo.rssiMin), -160, -110);
     }
 }
 
@@ -1411,7 +1410,7 @@ static void NextScanStep() {
     { 
       int currentChannel = scanChannel[scanInfo.i];
       settings.rssiTriggerLevelUp = SLRssiTriggerLevelUp[ScanListNumber[scanInfo.i]];
-      scanInfo.f =  reconstructFreq(currentChannel);
+      scanInfo.f =  gMR_ChannelFrequencyAttributes[currentChannel].Frequency;
     } 
     else {
           // frequency mode
@@ -2624,7 +2623,17 @@ static void ClearSettings()
   BK4819_WriteRegister(BK4819_REG_29, 0xAB40);
   BK4819_WriteRegister(BK4819_REG_19, 0x1041);
   BK4819_WriteRegister(BK4819_REG_73, 0x4692);
-  ClearHistory();
+  //Clear History
+  memset(HFreqs,0,sizeof(HFreqs));
+  memset(HCount,0,sizeof(HCount));
+  memset(HBlacklisted,0,sizeof(HBlacklisted));
+  historyListIndex = 0;
+  historyScrollOffset = 0;
+  indexFs = HISTORY_SIZE;
+  #ifdef ENABLE_EEPROM_512K
+  WriteHistory();
+  #endif
+  indexFs = 0;
   SaveSettings(); 
 }
 
@@ -2651,7 +2660,7 @@ static bool GetScanListLabel(uint8_t scanListIndex, char* bufferOut) {
 
     SETTINGS_FetchChannelName(channel_name, first_channel);
     if (channel_name[0] == '\0') {
-        uint32_t freq = reconstructFreq(first_channel);
+        uint32_t freq = gMR_ChannelFrequencyAttributes[first_channel].Frequency;
         char freqStr[12];
         sprintf(freqStr, "%u.%05u", freq / 100000, freq % 100000);
         RemoveTrailZeros(freqStr);
@@ -2731,9 +2740,6 @@ static void GetParametersText(uint8_t index, char *buffer) {
         case 9:
             if (gCounthistory) sprintf(buffer, "Freq Counting");
             else sprintf(buffer, "Time Counting");
-            break;
-        case 10:
-            sprintf(buffer, "CLEAR HISTORY: 3");
             break;
         default:
             // Gestion d'un index inattendu (optionnel)
@@ -2948,7 +2954,7 @@ static void RenderScanListChannelsDoubleLines(const char* title, uint8_t numItem
         char channel_name[12];
         SETTINGS_FetchChannelName(channel_name, channelIndex);
         
-        uint32_t freq = reconstructFreq(channelIndex);
+        uint32_t freq = gMR_ChannelFrequencyAttributes[channelIndex].Frequency;
         char freqStr[16];
         sprintf(freqStr, "... %u.%05u", freq/100000, freq%100000);
         RemoveTrailZeros(freqStr);

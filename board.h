@@ -22,7 +22,6 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <misc.h>
 
 void     BOARD_FLASH_Init(void);
 void     BOARD_GPIO_Init(void);
@@ -37,7 +36,6 @@ void     BOARD_FactoryReset();
 
 void     BOARD_gMR_LoadChannels();
 uint16_t BOARD_gMR_fetchChannel(const uint32_t freq);
-uint32_t reconstructFreq(uint16_t index) ;
 
 #endif
 
