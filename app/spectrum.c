@@ -694,7 +694,7 @@ static void ToggleRX(bool on) {
     //BACKLIGHT_TurnOn();
     // automatically switch modulation & bw if known chanel
     if (on && isKnownChannel) {
-        settings.modulationType = channelModulation;
+        if(!gForceModulation) settings.modulationType = channelModulation;
         //NO NAMES memmove(rxChannelName, channelName, sizeof(rxChannelName));
         RADIO_SetModulation(settings.modulationType);
         BK4819_InitAGC(settings.modulationType);
@@ -725,7 +725,7 @@ static void ToggleRX(bool on) {
 
 // Scan info
 static void ResetScanStats() {
-  scanInfo.rssiMax = scanInfo.rssiMin + 20 ; 
+  scanInfo.rssiMax = scanInfo.rssiMin + 5 ; 
 }
 
 bool SingleBandCheck(void) {
@@ -875,8 +875,9 @@ LogUart(str); */
 
 static void UpdateDBMaxAuto() {
   static uint8_t z = 2;
+  int newDbMax;
     if (scanInfo.rssiMax > 0) {
-        int newDbMax = clamp(Rssi2DBm(scanInfo.rssiMax), -100, 60);
+        newDbMax = clamp(Rssi2DBm(scanInfo.rssiMax), -100, 50);
 
         if (newDbMax > settings.dbMax + z) {
             settings.dbMax = settings.dbMax + z;   // montée limitée
@@ -888,7 +889,7 @@ static void UpdateDBMaxAuto() {
     }
 
     if (scanInfo.rssiMin > 0) {
-        settings.dbMin = clamp(Rssi2DBm(scanInfo.rssiMin), -160, -110);
+        settings.dbMin = clamp(Rssi2DBm(scanInfo.rssiMin), -100, 50);
     }
 }
 
@@ -935,8 +936,7 @@ static void ToggleModulation() {
   }
   RADIO_SetModulation(settings.modulationType);
   BK4819_InitAGC(settings.modulationType);
-  
-  if (appMode == SCAN_BAND_MODE)gForceModulation = 1;
+  gForceModulation = 1;
 }
 
 static void ToggleListeningBW(bool inc) {
@@ -1082,13 +1082,33 @@ static void DrawSpectrum()
     }
 }
 
- // Format frequency string (remove trailing zeros)
- void RemoveTrailZeros(char* freqStr){
-     
-     char *p = freqStr + strlen(freqStr) - 1;
-     while (p > freqStr && *p == '0') *p-- = '\0';
-    if (*p == '.') *p = '\0';
+void RemoveTrailZeros(char *s) {
+    char *p = s; 
+    while (*p) p++;               // aller à la fin
+    while (p > s && *--p == '0') *p = 0;  // retire zéros inutiles
+    if (*p == '.') *p = 0;        // retire le '.' final
+
+    // cherche le point décimal pour tester les motifs de fin
+    for (p = s; *p && *p != '.'; p++);
+    if (!*p) return;
+    char *d = p + 1;
+    int n = 0; while (d[n]) n++;
+    if (n >= 2) {
+        char a = d[n-2], b = d[n-1];
+        if (a == '3' && (b == '3' || b == '4')) d[--n] = 0;
+        else if (a == '6' && (b == '6' || b == '7')) {
+            d[--n] = 0;
+            if (d[n-1] < '9') d[n-1]++; // arrondir léger
+        }
+    }
+
+    // retire à nouveau les zéros et '.' finaux si restants
+    p = s;
+    while (*p) p++;
+    while (p > s && *--p == '0') *p = 0;
+    if (*p == '.') *p = 0;
 }
+
 
 static void DrawStatus() {
   int len=0;
@@ -2413,7 +2433,7 @@ void APP_RunSpectrum(uint8_t Spectrum_state) {
   BK4819_ToggleGpioOut(BK4819_GPIO6_PIN2_GREEN, false);
   isListening = true; // to turn off RX later
   newScanStart = true;
-  RADIO_SetModulation(settings.modulationType = MODULATION_FM);
+  //RADIO_SetModulation(settings.modulationType = MODULATION_FM);
   //BK4819_SetFilterBandwidth(settings.listenBw, false);
   AutoAdjustFreqChangeStep();
   RelaunchScan();
@@ -2740,6 +2760,9 @@ static void GetParametersText(uint8_t index, char *buffer) {
         case 9:
             if (gCounthistory) sprintf(buffer, "Freq Counting");
             else sprintf(buffer, "Time Counting");
+            break;
+        case 10:
+            sprintf(buffer, "CLEAR HISTORY: 3");
             break;
         default:
             // Gestion d'un index inattendu (optionnel)
