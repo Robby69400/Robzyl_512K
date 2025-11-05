@@ -2893,7 +2893,7 @@ static void RenderHistoryList() {
     memset(gFrameBuffer, 0, sizeof(gFrameBuffer));
     
     if (!SpectrumMonitor) {
-      sprintf(headerString, "HISTORY: %d", indexFs);
+      sprintf(headerString, "HISTORY: %d", CountValidHistoryItems());
       UI_PrintStringSmall(headerString, 1, LCD_WIDTH - 1, 0, 0);
     } else DrawMeter(0);
     
