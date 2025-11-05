@@ -529,13 +529,16 @@ typedef struct HistoryStruct {
 #ifdef ENABLE_EEPROM_512K
 void ReadHistory() {
     HistoryStruct History= {0};
+    indexFs = 0;
     for (uint16_t position = 0; position < HISTORY_SIZE; position++) {
     EEPROM_ReadBuffer(ADRESS_HISTORY + position * sizeof(HistoryStruct), (uint8_t *)&History, sizeof(HistoryStruct));
     if (History.HBlacklisted > 1) return;
     HFreqs[position] = History.HFreqs;
     HCount[position] = History.HCount;
     HBlacklisted[position] = History.HBlacklisted;
-    indexFs = position;
+    if (History.HFreqs != 0) {
+        indexFs = position + 1;
+    }
   }
 }
 
