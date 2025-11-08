@@ -36,7 +36,6 @@
 #include "misc.h"
 #include "radio.h"
 #include "settings.h"
-#include "ui/lock.h"
 #include "ui/welcome.h"
 #include "ui/menu.h"
 #include "version.h"
@@ -143,18 +142,6 @@ void Main(void)
 	else
 	{
 		BACKLIGHT_TurnOn();
-
-		#ifdef ENABLE_PWRON_PASSWORD
-			if (gEeprom.POWER_ON_PASSWORD < PASSWORD_OFF)
-			{
-				bIsInLockScreen = true;
-				UI_DisplayLock();
-				bIsInLockScreen = false;
-			}
-			gEeprom.PASSWORD_WRONG_ATTEMPTS = 0;
-			gFlagSaveSettings = true;
-		#endif
-
 		UI_DisplayWelcome();
 
 		if (gEeprom.POWER_ON_DISPLAY_MODE != POWER_ON_DISPLAY_MODE_NONE)

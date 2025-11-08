@@ -411,26 +411,6 @@ void UI_DisplayMenu(void)
 
 				already_printed = true;
 				break;
-			#ifdef ENABLE_PWRON_PASSWORD
-				case MENU_PASSWORD:
-					if (!gIsInSubMenu || gInputBoxIndex == 0)
-					{
-						if((unsigned int)gSubMenuSelection >= PASSWORD_OFF)
-						{
-							strcpy(String, "OFF");
-						}
-						else
-						{
-							strcpy(String, "****");
-						}
-					}
-					else
-					{
-						const char * ascii = INPUTBOX_GetAscii();
-						sprintf(String, "%.4s  ",ascii);
-					}
-					break;
-			#endif
 
 			case MENU_W_N:
 				strcpy(String, bwNames[gSubMenuSelection]);

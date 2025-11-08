@@ -131,7 +131,7 @@ uint8_t refresh = 0;
 #define F_MAX frequencyBandTable[ARRAY_SIZE(frequencyBandTable) - 1].upper
 #define Bottom_print 51 //Robby69
 Mode appMode;
-#define UHF_NOISE_FLOOR 20
+#define UHF_NOISE_FLOOR 5
 uint16_t scanChannel[MR_CHANNEL_LAST + 3];
 uint8_t ScanListNumber[MR_CHANNEL_LAST + 3];
 uint16_t scanChannelsCount;
@@ -890,7 +890,7 @@ static void Measure() {
         if (rssi2 > rssi+10) {
           peak.f = scanInfo.f;
           peak.i = scanInfo.i;
-          gIsPeak = true;
+          if (settings.rssiTriggerLevelUp < 50) gIsPeak = true;
         }
     } 
     if (!gIsPeak || !isListening)
@@ -1228,9 +1228,11 @@ switch(SpectrumMonitor) {
       pos += len;
     break;
   } 
-
-
-  len = sprintf(&String[pos],"U%d %dms %s %s ", settings.rssiTriggerLevelUp,DelayRssi, gModulationStr[settings.modulationType],bwNames[settings.listenBw]);
+  if (settings.rssiTriggerLevelUp == 50) len = sprintf(&String[pos],"UOO ");
+  else len = sprintf(&String[pos],"U%d ", settings.rssiTriggerLevelUp);
+  pos += len;
+  
+  len = sprintf(&String[pos],"%dms %s %s ", DelayRssi, gModulationStr[settings.modulationType],bwNames[settings.listenBw]);
   pos += len;
   int32_t afc = ((int64_t)(int16_t)BK4819_ReadRegister(0x6D) * 1000LL) / 291LL;
   if (afc){
@@ -1876,7 +1878,7 @@ static void OnKeyDown(uint8_t key) {
           
       case KEY_STAR: {
           int step = (settings.rssiTriggerLevelUp >= 20) ? 5 : 1;
-          settings.rssiTriggerLevelUp = (settings.rssiTriggerLevelUp >= 80? 0 : settings.rssiTriggerLevelUp + step);
+          settings.rssiTriggerLevelUp = (settings.rssiTriggerLevelUp >= 50? 0 : settings.rssiTriggerLevelUp + step);
           if(appMode == SCAN_BAND_MODE) BPRssiTriggerLevelUp[bl] = settings.rssiTriggerLevelUp;
           if(appMode == CHANNEL_MODE) SLRssiTriggerLevelUp[ScanListNumber[scanInfo.i]] = settings.rssiTriggerLevelUp;
           if (!SpectrumMonitor) Skip();
@@ -1888,7 +1890,7 @@ static void OnKeyDown(uint8_t key) {
 
       case KEY_F: {
           int step = (settings.rssiTriggerLevelUp <= 20) ? 1 : 5;
-          settings.rssiTriggerLevelUp = (settings.rssiTriggerLevelUp <= 0? 80 : settings.rssiTriggerLevelUp - step);
+          settings.rssiTriggerLevelUp = (settings.rssiTriggerLevelUp <= 0? 50 : settings.rssiTriggerLevelUp - step);
           if(appMode == SCAN_BAND_MODE) BPRssiTriggerLevelUp[bl] = settings.rssiTriggerLevelUp;
           if(appMode == CHANNEL_MODE) SLRssiTriggerLevelUp[ScanListNumber[scanInfo.i]] = settings.rssiTriggerLevelUp;
           if (!SpectrumMonitor) Skip();

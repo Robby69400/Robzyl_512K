@@ -500,7 +500,7 @@ void BOARD_Init(void)
 	ST7565_Init(true);
 	CRC_Init();
 }
-
+#include "debugging.h"
 void BOARD_EEPROM_Init(void)
 {
 	uint8_t      Data[16];
@@ -526,19 +526,20 @@ void BOARD_EEPROM_Init(void)
 	gEeprom.VFO_OPEN              = (Data[7] < 2) ? Data[7] : true;
 
 	// 0E80..0E87
-	EEPROM_ReadBuffer(0x0E80, Data, 8);
-	gEeprom.ScreenChannel   = IS_VALID_CHANNEL(Data[0]) ? Data[0] : (FREQ_CHANNEL_FIRST + BAND6_400MHz);
-	
-	gEeprom.MrChannel       = IS_MR_CHANNEL(Data[1])    ? Data[1] : MR_CHANNEL_FIRST;
-	gEeprom.FreqChannel     = IS_FREQ_CHANNEL(Data[2])  ? Data[2] : (FREQ_CHANNEL_FIRST + BAND6_400MHz);
-	
-	EEPROM_ReadBuffer(0x0E88, Data, 8);
+	uint16_t      Data16[3];
+	EEPROM_ReadBuffer(0x0E80, Data16, sizeof(Data16));
+	gEeprom.ScreenChannel = Data16[0];
+	gEeprom.MrChannel 	  = Data16[1];
+	gEeprom.FreqChannel   = Data16[2];
+
+	char str[64] = "";sprintf(str, "Init %d %d %d\r\n", gEeprom.ScreenChannel,gEeprom.MrChannel,gEeprom.FreqChannel );LogUart(str);
+	EEPROM_ReadBuffer(0x0E90, Data, 2);
 	memmove(&gEeprom.FM_FrequencyPlaying, Data, 2);
 	// validate that its within the supported range
 	if(gEeprom.FM_FrequencyPlaying < FM_RADIO_MIN_FREQ || gEeprom.FM_FrequencyPlaying > FM_RADIO_MAX_FREQ)
 		gEeprom.FM_FrequencyPlaying = FM_RADIO_MIN_FREQ;
 
-	// 0E90..0E97
+	// 0E92..0E99
 	EEPROM_ReadBuffer(0x0E90, Data, 8);
 	gEeprom.KEY_M_LONG_PRESS_ACTION      = ((Data[0] >> 1) < ACTION_OPT_LEN) ? (Data[0] >> 1) : ACTION_OPT_NONE;
 	gEeprom.KEY_1_SHORT_PRESS_ACTION     = (Data[1] < ACTION_OPT_LEN) ? Data[1] : ACTION_OPT_MONITOR;
@@ -547,18 +548,6 @@ void BOARD_EEPROM_Init(void)
 	gEeprom.KEY_2_LONG_PRESS_ACTION      = (Data[4] < ACTION_OPT_LEN) ? Data[4] : ACTION_OPT_NONE;
 	gEeprom.AUTO_KEYPAD_LOCK             = (Data[6] < 2)              ? Data[6] : false;
 	gEeprom.POWER_ON_DISPLAY_MODE        = (Data[7] < 4)              ? Data[7] : POWER_ON_DISPLAY_MODE_VOLTAGE;
-
-	// 0E98..0E9F
-	#ifdef ENABLE_PWRON_PASSWORD
-		EEPROM_ReadBuffer(0x0E98, Data, 8);
-		memmove(&gEeprom.POWER_ON_PASSWORD, Data, 4);
-	#endif
-
-	// 0EA0..0EA7
-	EEPROM_ReadBuffer(0x0EA0, Data, 8);
-	#ifdef ENABLE_PWRON_PASSWORD
-		gEeprom.PASSWORD_WRONG_ATTEMPTS = (Data[2] > PASSWORD_MAX_RETRIES) ? PASSWORD_MAX_RETRIES : Data[2];
-	#endif
 
 	// 0EA8..0EAF
 	EEPROM_ReadBuffer(0x0EA8, Data, 8);

@@ -1,5 +1,5 @@
 AUTHOR_STRING := ""
-VERSION_STRING := V5.4.9
+VERSION_STRING := V5.4.10
 
 
 
@@ -17,8 +17,6 @@ ENABLE_LTO                    := 1
 ENABLE_UART                   := 1
 ENABLE_FMRADIO                := 1
 ENABLE_TX1750                 := 1
-ENABLE_PWRON_PASSWORD         := 0
-
 # ---- CUSTOM MODS ----
 ENABLE_BIG_FREQ                         := 1
 ENABLE_SMALL_BOLD                       := 1
@@ -145,9 +143,6 @@ ifeq ($(ENABLE_FMRADIO),1)
 endif
 OBJS += ui/helper.o
 OBJS += ui/inputbox.o
-ifeq ($(ENABLE_PWRON_PASSWORD),1)
-	OBJS += ui/lock.o
-endif
 OBJS += ui/main.o
 OBJS += ui/menu.o
 OBJS += ui/scanner.o
@@ -259,10 +254,6 @@ ifeq ($(ENABLE_SMALL_BOLD),1)
 endif
 ifeq ($(ENABLE_TX1750),1)
 	CFLAGS  += -DENABLE_TX1750
-endif
-
-ifeq ($(ENABLE_PWRON_PASSWORD),1)
-	CFLAGS  += -DENABLE_PWRON_PASSWORD
 endif
 
 ifeq ($(ENABLE_TX_WHEN_AM),1)
