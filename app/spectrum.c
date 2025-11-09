@@ -61,20 +61,21 @@ bool HBlacklisted[HISTORY_SIZE]= {0};
 /////////////////////////////Parameters://///////////////////////////
 //SEE HERE parametersSelectedIndex
 // see GetParametersText
-uint8_t DelayRssi = 4;                          // 1
-uint8_t PttEmission = 0;                        // 2
-uint16_t SpectrumDelay = 0;                     // 3
-uint32_t gScanRangeStart = 1400000;             // 4
-uint32_t gScanRangeStop = 13000000;             // 5
-//Step                                          // 6
-//ListenBW                                      // 7
-//Modulation                                    // 8
-//ClearSettings                                 // 9
-bool gCounthistory = 1;                         // 10
-//ClearHistory                                  // 11
-uint8_t MaxListenTime = 0;                      // 12
-//RAM                                           // 13
-#define PARAMETER_COUNT 13
+uint8_t DelayRssi = 4;                // case 0       
+uint16_t SpectrumDelay = 0;           // case 1      
+uint8_t MaxListenTime = 0;            // case 2
+uint8_t PttEmission = 0;              // case 3      
+uint32_t gScanRangeStart = 1400000;   // case 4      
+uint32_t gScanRangeStop = 13000000;   // case 5      
+//Step                                // case 6      
+//ListenBW                            // case 7      
+//Modulation                          // case 8      
+//ClearSettings                       // case 9      
+bool Backlight_On_Rx = 0;             // case 10        
+bool gCounthistory = 1;               // case 11      
+//ClearHistory                        // case 12      
+//RAM                                 // case 13      
+#define PARAMETER_COUNT 14
 ////////////////////////////////////////////////////////////////////
 uint32_t spectrumElapsedCount = 0;
 uint8_t IndexMaxLT = 0;
@@ -1774,14 +1775,11 @@ static void OnKeyDown(uint8_t key) {
           case KEY_1:
           {
               bool isKey3 = (key == KEY_3);
-              bool redrawNeeded = false;
-          
               switch(parametersSelectedIndex) {//SEE HERE parametersSelectedIndex
                   case 0: // DelayRssi
                       DelayRssi = isKey3 ? 
                                  (DelayRssi >= 12 ? 0 : DelayRssi + 1) :
                                  (DelayRssi <= 0 ? 12 : DelayRssi - 1);
-                      redrawNeeded = true;
                       break;
               
                   case 1: // SpectrumDelay
@@ -1793,46 +1791,8 @@ static void OnKeyDown(uint8_t key) {
                           SpectrumDelay -= (SpectrumDelay < 10000) ? 1000 : 5000;
                       }
                       break;
-                    
-                  case 2: // PttEmission
-                      PttEmission = isKey3 ?
-                                (PttEmission >= 2 ? 0 : PttEmission + 1) :
-                                (PttEmission <= 0 ? 2 : PttEmission - 1);
-                      break;
-                    
-                  case 3: // FreqInput
-                  case 4:
-                      if (!isKey3) {
-                          appMode = SCAN_RANGE_MODE;
-                          FreqInput();
-                      }
-                      break;
-
-                  case 5: // UpdateScanStep
-                      UpdateScanStep(isKey3);
-                      break;
-                    
-                  case 6: // ToggleListeningBW
-                  case 7: // ToggleModulation
-                      if (isKey3 || key == KEY_1) {
-                          if (parametersSelectedIndex == 6) {
-                              ToggleListeningBW(isKey3 ? 0 : 1);
-                          } else {
-                              ToggleModulation();
-                          }
-                      }
-                      break;
-                  case 8: // settings.rssiTriggerLevelUp
-                        if (isKey3) ClearSettings();
-                      break;
-                  case 9: // gCounthistory
-                        gCounthistory=!gCounthistory;
-                      break;
-                  case 10: // ClearHistory
-                        if (isKey3) ClearHistory();
-                      break;
                   
-                  case 11: 
+                  case 2: 
                       if (isKey3) {
                           IndexMaxLT++;
                           if (IndexMaxLT > LISTEN_STEP_COUNT) IndexMaxLT = 0;
@@ -1842,15 +1802,54 @@ static void OnKeyDown(uint8_t key) {
                       }
                       MaxListenTime = listenSteps[IndexMaxLT];
                       break;
+                  
+                  case 3: // PttEmission
+                      PttEmission = isKey3 ?
+                                (PttEmission >= 2 ? 0 : PttEmission + 1) :
+                                (PttEmission <= 0 ? 2 : PttEmission - 1);
+                      break;
+                    
+                  case 4: // FreqInput
+                  case 5:
+                      if (!isKey3) {
+                          appMode = SCAN_RANGE_MODE;
+                          FreqInput();
+                      }
+                      break;
 
-                  case 12: // RAM
+                  case 6: // UpdateScanStep
+                      UpdateScanStep(isKey3);
+                      break;
+                    
+                  case 7: // ToggleListeningBW
+                  case 8: // ToggleModulation
+                      if (isKey3 || key == KEY_1) {
+                          if (parametersSelectedIndex == 7) {
+                              ToggleListeningBW(isKey3 ? 0 : 1);
+                          } else {
+                              ToggleModulation();
+                          }
+                      }
+                      break;
+                  case 9: 
+                        if (isKey3) ClearSettings();
+                      break;
+                  case 10: 
+                        Backlight_On_Rx=!Backlight_On_Rx;
+                      break;
+                  case 11: // gCounthistory
+                        gCounthistory=!gCounthistory;
+                      break;
+                  case 12: // ClearHistory
+                        if (isKey3) ClearHistory();
+                      break;
+
+                  case 13: // RAM
                       break;
 
               }
             
-              if (isKey3 || redrawNeeded) { //TO REMOVE MAYBE
-                  
-              }
+
               break;
           }
         case KEY_EXIT: // Exit parameters menu to previous menu/state
@@ -2179,9 +2178,9 @@ static void OnKeyDownFreqInput(uint8_t key) {
         currentFreq = tempFreq;
       ResetModifiers();
     }
-    if (currentState == PARAMETERS_SELECT && parametersSelectedIndex == 3)
-        gScanRangeStart = tempFreq;
     if (currentState == PARAMETERS_SELECT && parametersSelectedIndex == 4)
+        gScanRangeStart = tempFreq;
+    if (currentState == PARAMETERS_SELECT && parametersSelectedIndex == 5)
         gScanRangeStop = tempFreq;
     if(gScanRangeStart > gScanRangeStop)
 		    SWAP(gScanRangeStart, gScanRangeStop);
@@ -2485,6 +2484,7 @@ static void UpdateListening(void) { // called every 10ms
             stableCount = 0;
             if (gEeprom.BACKLIGHT_MAX > 5)
                 BK4819_ToggleGpioOut(BK4819_GPIO6_PIN2_GREEN, 1);
+            if(Backlight_On_Rx) BACKLIGHT_TurnOn();
         }
     } else {
         stableFreq = peak.f;
@@ -2703,6 +2703,7 @@ typedef struct {
     uint16_t R73;                      // AFC range select
     uint16_t SpectrumDelay;
     uint8_t IndexMaxLT;
+    bool Backlight_On_Rx;
 } SettingsEEPROM;
 
 
@@ -2719,8 +2720,8 @@ static void LoadSettings()
   settings.rssiTriggerLevelUp = eepromData.Trigger;
   settings.listenBw = eepromData.listenBw;
   BK4819_SetFilterBandwidth(settings.listenBw, false);
-  if (eepromData.RangeStart > 1400000) gScanRangeStart = eepromData.RangeStart;
-  if (eepromData.RangeStop > 1400000) gScanRangeStop = eepromData.RangeStop;
+  if (eepromData.RangeStart >= 1400000) gScanRangeStart = eepromData.RangeStart;
+  if (eepromData.RangeStop >= 1400000) gScanRangeStop = eepromData.RangeStop;
   settings.scanStepIndex = eepromData.scanStepIndex;
   for (int i = 0; i < 32; i++) {
       BPRssiTriggerLevelUp[i] = eepromData.BPRssiTriggerLevelUp[i];
@@ -2735,6 +2736,7 @@ static void LoadSettings()
   SpectrumDelay = eepromData.SpectrumDelay;
   IndexMaxLT = eepromData.IndexMaxLT;
   MaxListenTime = listenSteps[IndexMaxLT];
+  Backlight_On_Rx = eepromData.Backlight_On_Rx;
   ChannelAttributes_t att;
   for (int i = 0; i < MR_CHANNEL_LAST+1; i++) {
     att = gMR_ChannelAttributes[i];
@@ -2766,6 +2768,7 @@ static void SaveSettings()
   eepromData.ShowLines = ShowLines;
   eepromData.SpectrumDelay = SpectrumDelay;
   eepromData.IndexMaxLT = IndexMaxLT;
+  eepromData.Backlight_On_Rx = Backlight_On_Rx;
   for (int i = 0; i < 32; i++) { 
       eepromData.BPRssiTriggerLevelUp[i] = BPRssiTriggerLevelUp[i];
       if (settings.bandEnabled[i]) eepromData.bandListFlags |= (1 << i);
@@ -2815,6 +2818,7 @@ static void ClearSettings()
   ShowLines = 2;
   SpectrumDelay = 0;
   MaxListenTime = 0;
+  Backlight_On_Rx = 0;
   for (int i = 0; i < 32; i++) { 
       BPRssiTriggerLevelUp[i] = 5;
       settings.bandEnabled[i] = 0;
@@ -2899,8 +2903,12 @@ static void GetParametersText(uint8_t index, char *buffer) {
             if (SpectrumDelay < 65000) sprintf(buffer, "SpectrumDelay:%2us", SpectrumDelay / 1000);
               else sprintf(buffer, "SpectrumDelay:oo");
             break;
-            
         case 2:
+            static const char *labels[] = {"OFF","10s","30s", "1m", "5m", "10m", "20m", "30m"};
+            sprintf(buffer, "MaxListenTime:%s", labels[IndexMaxLT]);
+            break;
+
+        case 3:
             if(PttEmission == 0)
               sprintf(buffer, "PTT: LAST VFO FREQ");
             else if (PttEmission == 1)
@@ -2909,49 +2917,51 @@ static void GetParametersText(uint8_t index, char *buffer) {
               sprintf(buffer, "PTT: LAST RECEIVED");
             break;
             
-        case 3: {
+        case 4: {
             uint32_t start = gScanRangeStart;
             sprintf(buffer, "FStart: %u.%05u", start / 100000, start % 100000);
             break;
         }
             
-        case 4: {
+        case 5: {
             uint32_t stop = gScanRangeStop;
             sprintf(buffer, "FStop: %u.%05u", stop / 100000, stop % 100000);
             break;
         }
       
-        case 5: {
+        case 6: {
             uint32_t step = GetScanStep();
             sprintf(buffer, step % 100 ? "STEP: %uk%02u" : "STEP: %uk", 
                    step / 100, step % 100);
             break;
         }
             
-        case 6:
+        case 7:
             sprintf(buffer, "ListenBw: %s", bwNames[settings.listenBw]);
             break;
             
-        case 7:
+        case 8:
             sprintf(buffer, "Modulation: %s", gModulationStr[settings.modulationType]);
             break;
         
-        case 8:
+        case 9:
             sprintf(buffer, "DEFAULT PARAMS: 3");
             break;
-        case 9:
+        case 10:
+            if (Backlight_On_Rx)
+            sprintf(buffer, "RX_Backlight_ON");
+            else sprintf(buffer, "RX_Backlight_OFF");
+            break;
+        case 11:
             if (gCounthistory) sprintf(buffer, "Freq Counting");
             else sprintf(buffer, "Time Counting");
             break;
-        case 10:
-            sprintf(buffer, "CLEAR HISTORY: 3");
-            break;
-        case 11:
-            static const char *labels[] = {"OFF","10s","30s", "1m", "5m", "10m", "20m", "30m"};
-            sprintf(buffer, "MaxListenTime:%s", labels[IndexMaxLT]);
-            break;
 
         case 12:
+            sprintf(buffer, "CLEAR HISTORY: 3");
+            break;
+
+        case 13:
             uint32_t free = free_ram_bytes();
             sprintf(buffer, "%uB", (unsigned)free);
             break;
