@@ -171,7 +171,6 @@ extern EEPROM_Config_t gEeprom;
 
 // RxOffs maximum setting
 #define RX_OFFSET_MAX 15000000
-#define RX_OFFSET_ADDR 0x0E9C
 
 void SETTINGS_SaveVfoIndices(void);
 void SETTINGS_SaveSettings(void);

@@ -34,11 +34,10 @@ void SETTINGS_SaveVfoIndices(void)
 {
 	uint16_t State[3];
 
-	EEPROM_ReadBuffer(0x0E80, State, sizeof(State));
 	State[0] = gEeprom.ScreenChannel;
 	State[1] = gEeprom.MrChannel;
 	State[2] = gEeprom.FreqChannel;
-	char str[64] = "";sprintf(str, "Save %d %d %d\r\n", State[0],State[1],State[2] );LogUart(str);
+	State[3] = gEeprom.FM_FrequencyPlaying;
 	EEPROM_WriteBuffer(0x0E80, State);
 }
 
@@ -71,18 +70,13 @@ void SETTINGS_SaveSettings(void)
 	State[5] = gEeprom.SCAN_RESUME_MODE;
 	State[6] = gEeprom.AUTO_KEYPAD_LOCK;
 	State[7] = gEeprom.POWER_ON_DISPLAY_MODE;
-	EEPROM_WriteBuffer(0x0E92, State);
-
-	// 0x0E98..0x0E9F
-	memset(State, 0xFF, sizeof(State));
-	EEPROM_ReadBuffer(0x0E98, State, 8);
-	memcpy(&State[4], &gEeprom.RX_OFFSET, 4);
-	EEPROM_WriteBuffer(0x0E98, State);
-
-	memset(State, 0xFF, sizeof(State));
-	EEPROM_WriteBuffer(0x0EA0, State);
-
-	memset(State, 0xFF, sizeof(State));
+	EEPROM_WriteBuffer(0x0E90, State);
+	
+	uint32_t  State32;
+	EEPROM_ReadBuffer(0x0EA0, &State32, 4);
+	State32 = gEeprom.RX_OFFSET;
+	EEPROM_WriteBuffer(0x0EA0, &State32);
+	
 	#if defined(ENABLE_TX1750)
 		State[0] = gEeprom.ALARM_MODE;
 	#else
@@ -100,14 +94,8 @@ void SETTINGS_SaveSettings(void)
 
 	EEPROM_WriteBuffer(0x0F40, State);
 
-		//0x0E88..0x0E8F
-		memset(State, 0xFF, sizeof(State));
-		memcpy(&State[0], &gEeprom.FM_FrequencyPlaying, 2);
-		EEPROM_WriteBuffer(0x0E90, State);
-
-
+	SETTINGS_SaveVfoIndices();
 }
-#include "debugging.h"
 
 void SETTINGS_SaveChannel(uint16_t Channel, const VFO_Info_t *pVFO, uint8_t Mode)
 {
@@ -143,7 +131,6 @@ void SETTINGS_SaveChannel(uint16_t Channel, const VFO_Info_t *pVFO, uint8_t Mode
 			State[6] =  pVFO->STEP_SETTING;
 			State[7] =  pVFO->SCRAMBLING_TYPE;
 			EEPROM_WriteBuffer(OffsetVFO + 8, State);
-char str[64] = "";sprintf(str, "%d %d\r\n", OffsetVFO, pVFO->freq_config_RX.Frequency);LogUart(str);
 			SETTINGS_UpdateChannel(Channel, pVFO, true);
 
 			if (IS_MR_CHANNEL(Channel))

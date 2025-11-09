@@ -134,8 +134,10 @@ void DrawNumeric(void)
 	if(gCurrentFunction == FUNCTION_RECEIVE || gCurrentFunction == FUNCTION_MONITOR || gCurrentFunction == FUNCTION_INCOMING) {
 		int32_t hz = ((int64_t)(int16_t)BK4819_ReadRegister(0x6D) * 1000LL) / 291LL;
     	memset(&gFrameBuffer[0][0], 0, 2 * 128);
-		len = sprintf(buf, "AFC:%+d ", hz);
-		pos += len;
+		if (hz) {
+			len = sprintf(buf, "AFC:%+d ", hz);
+			pos += len;
+		}
 		BK4819_WriteRegister(BK4819_REG_51,
 		BK4819_REG_51_ENABLE_CxCSS         |
 		BK4819_REG_51_AUTO_CDCSS_BW_ENABLE |

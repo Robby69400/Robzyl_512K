@@ -526,20 +526,18 @@ void BOARD_EEPROM_Init(void)
 	gEeprom.VFO_OPEN              = (Data[7] < 2) ? Data[7] : true;
 
 	// 0E80..0E87
-	uint16_t      Data16[3];
+	uint16_t      Data16[4];
 	EEPROM_ReadBuffer(0x0E80, Data16, sizeof(Data16));
 	gEeprom.ScreenChannel = Data16[0];
 	gEeprom.MrChannel 	  = Data16[1];
 	gEeprom.FreqChannel   = Data16[2];
-
-	char str[64] = "";sprintf(str, "Init %d %d %d\r\n", gEeprom.ScreenChannel,gEeprom.MrChannel,gEeprom.FreqChannel );LogUart(str);
-	EEPROM_ReadBuffer(0x0E90, Data, 2);
-	memmove(&gEeprom.FM_FrequencyPlaying, Data, 2);
+	gEeprom.FM_FrequencyPlaying = Data16[3];
+	
 	// validate that its within the supported range
 	if(gEeprom.FM_FrequencyPlaying < FM_RADIO_MIN_FREQ || gEeprom.FM_FrequencyPlaying > FM_RADIO_MAX_FREQ)
 		gEeprom.FM_FrequencyPlaying = FM_RADIO_MIN_FREQ;
 
-	// 0E92..0E99
+	// 0E90..0E99
 	EEPROM_ReadBuffer(0x0E90, Data, 8);
 	gEeprom.KEY_M_LONG_PRESS_ACTION      = ((Data[0] >> 1) < ACTION_OPT_LEN) ? (Data[0] >> 1) : ACTION_OPT_NONE;
 	gEeprom.KEY_1_SHORT_PRESS_ACTION     = (Data[1] < ACTION_OPT_LEN) ? Data[1] : ACTION_OPT_MONITOR;
@@ -548,7 +546,6 @@ void BOARD_EEPROM_Init(void)
 	gEeprom.KEY_2_LONG_PRESS_ACTION      = (Data[4] < ACTION_OPT_LEN) ? Data[4] : ACTION_OPT_NONE;
 	gEeprom.AUTO_KEYPAD_LOCK             = (Data[6] < 2)              ? Data[6] : false;
 	gEeprom.POWER_ON_DISPLAY_MODE        = (Data[7] < 4)              ? Data[7] : POWER_ON_DISPLAY_MODE_VOLTAGE;
-
 	// 0EA8..0EAF
 	EEPROM_ReadBuffer(0x0EA8, Data, 8);
 	gEeprom.ROGER                          = (Data[1] <  7) ? Data[1] : ROGER_MODE_OFF;
@@ -566,7 +563,7 @@ void BOARD_EEPROM_Init(void)
 	gSetting_battery_text      = (((Data[7] >> 2) & 3u) <= 2) ? (Data[7] >> 2) & 3 : 2;
 	gSetting_backlight_on_tx_rx = (Data[7] >> 6) & 3u;
 	// Read RxOffset setting
-	EEPROM_ReadBuffer(RX_OFFSET_ADDR, Data, 4);
+	EEPROM_ReadBuffer(0x0EA0, Data, 4);
     memmove(&gEeprom.RX_OFFSET, Data, 4);
 	// Make sure it inits with some sane value
 	gEeprom.RX_OFFSET = gEeprom.RX_OFFSET > RX_OFFSET_MAX ? 0 : gEeprom.RX_OFFSET;

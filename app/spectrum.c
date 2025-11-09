@@ -1963,12 +1963,19 @@ static void OnKeyDown(uint8_t key) {
       
     case KEY_UP:
     
-    if (historyListActive) {
-        if (historyListIndex > 0) {
-        historyListIndex--;
-        if (historyListIndex < historyScrollOffset) {historyScrollOffset = historyListIndex;}
-        if (SpectrumMonitor) SetF(HFreqs[historyListIndex]);
-        }
+if (historyListActive) {
+    uint8_t count = CountValidHistoryItems();
+    if (!count) return;
+        if (historyListIndex == 0)
+            historyListIndex = count - 1;  // reboucle à la fin
+        else
+            historyListIndex--;
+
+        if (historyListIndex < historyScrollOffset)
+            historyScrollOffset = historyListIndex;
+
+        if (SpectrumMonitor)
+            SetF(HFreqs[historyListIndex]);
     } else {
 /*         if(SpectrumMonitor) {
           Skip();
@@ -2000,15 +2007,19 @@ static void OnKeyDown(uint8_t key) {
     }
     break;
   case KEY_DOWN: //History
-    
-    if (historyListActive) {
-        if (historyListIndex < CountValidHistoryItems()-1) {
+        if (historyListActive) {
+            uint8_t count = CountValidHistoryItems();
+            if (!count) return;
         historyListIndex++;
-        if (historyListIndex < historyScrollOffset) {historyScrollOffset = historyListIndex;}
-        if (SpectrumMonitor) SetF(HFreqs[historyListIndex]);
-        }
-    }
-    else {
+        if (historyListIndex >= count)
+            historyListIndex = 0;  // reboucle au début
+
+        if (historyListIndex < historyScrollOffset)
+            historyScrollOffset = historyListIndex;
+
+        if (SpectrumMonitor)
+            SetF(HFreqs[historyListIndex]);
+    } else {
 /*         if(SpectrumMonitor) {
           --scanInfo.i;
           --scanInfo.i;
