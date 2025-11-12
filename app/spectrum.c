@@ -1329,8 +1329,7 @@ static void BuildEnabledScanLists(char *buf, size_t buflen) {
 }
 
 static void DrawF(uint32_t f) {
-    if (f == 0) return;
-
+    if (f < 1400000 || f > 130000000) return;
     char freqStr[18];
     FormatFrequency(f, freqStr, sizeof(freqStr));
     UpdateCssDetection();

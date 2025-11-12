@@ -614,7 +614,7 @@ def list_def(value, lst, default):
 class UVK5Radio(chirp_common.CloneModeRadio):
     """Quansheng UV-K5"""
     VENDOR = "Quansheng"
-    MODEL = "UV-K5 ROBZYL"
+    MODEL = "UV-K5 ROBZYL 512K"
     BAUD_RATE = 38400
     NEEDS_COMPAT_SERIAL = False
     FIRMWARE_VERSION = ""
