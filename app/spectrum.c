@@ -780,7 +780,7 @@ static void ToggleRX(bool on) {
 
 // Scan info
 static void ResetScanStats() {
-  scanInfo.rssiMax = scanInfo.rssiMin + 20 ; 
+  scanInfo.rssiMax = scanInfo.rssiMin + 5 ; 
 }
 
 bool SingleBandCheck(void) {
@@ -932,7 +932,7 @@ static void UpdateDBMaxAuto() {
   static uint8_t z = 3;
   int newDbMax;
     if (scanInfo.rssiMax > 0) {
-        newDbMax = clamp(Rssi2DBm(scanInfo.rssiMax), -60, 10);
+        newDbMax = clamp(Rssi2DBm(scanInfo.rssiMax), -120, 10);
 
         if (newDbMax > settings.dbMax + z) {
             settings.dbMax = settings.dbMax + z;   // montée limitée
@@ -1333,7 +1333,7 @@ static void DrawF(uint32_t f) {
     if (f < 1400000 || f > 130000000) return;
     char freqStr[18];
     FormatFrequency(f, freqStr, sizeof(freqStr));
-    UpdateCssDetection();
+    if(ShowLines > 1)UpdateCssDetection();
     //char enabledLists[64];
     //BuildEnabledScanLists(enabledLists, sizeof(enabledLists));
     f = HFreqs[historyListIndex];
@@ -1357,7 +1357,7 @@ static void DrawF(uint32_t f) {
         snprintf(prefix, sizeof(prefix), "B%u ", bl + 1);
         snprintf(line2, sizeof(line2), "%-3s%s", prefix, BParams[bl].BandName);
     } else if (appMode == CHANNEL_MODE) {
-            if (gNextTimeslice_1s){
+            if (gNextTimeslice_1s && ShowLines > 2){
               ReadChannelName(channelFd,channelName);
               gNextTimeslice_1s = 0;
             }
@@ -2637,7 +2637,7 @@ void LoadValidMemoryChannels(void)
   }
 
 typedef struct {
-    // Block 1 (0x1D10 - 0x1D1F)
+    // Block 1 (0x1D10 - 0x1D1F) 240 bytes max
     int ShowLines;
     uint8_t DelayRssi;
     uint8_t PttEmission; 
@@ -2654,6 +2654,10 @@ typedef struct {
     uint16_t R29;                      // AF TX noise compressor, AF TX 0dB compressor, AF TX compression ratio
     uint16_t R19;                      // Disable MIC AGC
     uint16_t R73;                      // AFC range select
+    uint16_t R13;
+    uint16_t R3C;
+    uint16_t R43;
+    uint16_t R2B;
     uint16_t SpectrumDelay;
     uint8_t IndexMaxLT;
     bool Backlight_On_Rx;
@@ -2699,6 +2703,10 @@ static void LoadSettings()
   BK4819_WriteRegister(BK4819_REG_29, eepromData.R29);
   BK4819_WriteRegister(BK4819_REG_19, eepromData.R19);
   BK4819_WriteRegister(BK4819_REG_73, eepromData.R73);
+  BK4819_WriteRegister(BK4819_REG_13, eepromData.R13);
+  BK4819_WriteRegister(BK4819_REG_3C, eepromData.R3C);
+  BK4819_WriteRegister(BK4819_REG_43, eepromData.R43);
+  BK4819_WriteRegister(BK4819_REG_2B, eepromData.R2B);
 #ifdef ENABLE_EEPROM_512K
 if (gRequestedSpectrumState ==0) //only read once
   ReadHistory();
@@ -2731,9 +2739,22 @@ static void SaveSettings()
   eepromData.R29 = BK4819_ReadRegister(BK4819_REG_29);
   eepromData.R19 = BK4819_ReadRegister(BK4819_REG_19);
   eepromData.R73 = BK4819_ReadRegister(BK4819_REG_73);
+  eepromData.R13 = BK4819_ReadRegister(BK4819_REG_13);
+  eepromData.R3C = BK4819_ReadRegister(BK4819_REG_3C);
+  eepromData.R43 = BK4819_ReadRegister(BK4819_REG_43);
+  eepromData.R2B = BK4819_ReadRegister(BK4819_REG_2B);
   
-  //R40:13520 R29:43840 R19:4161 R73:18066 R13:958
+/*   char str[64] = "";
+  sprintf(str, "R40 %d \r\n", eepromData.R40);LogUart(str); //R40 13520
+  sprintf(str, "R29 %d \r\n", eepromData.R29);LogUart(str); //R29 43840
+  sprintf(str, "R19 %d \r\n", eepromData.R19);LogUart(str); //R19 4161
+  sprintf(str, "R73 %d \r\n", eepromData.R73);LogUart(str); //R73 18066
+  sprintf(str, "R13 %d \r\n", eepromData.R13);LogUart(str); //R13 958
+  sprintf(str, "R3C %d \r\n", eepromData.R3C);LogUart(str); //R3C 20360
+  sprintf(str, "R43 %d \r\n", eepromData.R43);LogUart(str); //R43 13896
+  sprintf(str, "R2B %d \r\n", eepromData.R2B);LogUart(str); //R2B 49152 */
 
+  
   // Write in 8-byte chunks
   for (uint16_t addr = 0; addr < sizeof(eepromData); addr += 8) 
     EEPROM_WriteBuffer(addr + 0x1D10, ((uint8_t*)&eepromData) + addr);
@@ -2779,10 +2800,15 @@ static void ClearSettings()
     }
   settings.bandEnabled[1] = 1;
   
-  BK4819_WriteRegister(BK4819_REG_40, 0x34D0);
-  BK4819_WriteRegister(BK4819_REG_29, 0xAB40);
-  BK4819_WriteRegister(BK4819_REG_19, 0x1041);
-  BK4819_WriteRegister(BK4819_REG_73, 0x4692);
+  BK4819_WriteRegister(BK4819_REG_40, 13520);
+  BK4819_WriteRegister(BK4819_REG_29, 43840);
+  BK4819_WriteRegister(BK4819_REG_19, 4161);
+  BK4819_WriteRegister(BK4819_REG_73, 18066);
+  BK4819_WriteRegister(BK4819_REG_13, 958);
+  BK4819_WriteRegister(BK4819_REG_3C, 20360);
+  BK4819_WriteRegister(BK4819_REG_43, 13896);
+  BK4819_WriteRegister(BK4819_REG_2B, 49152);
+
   //Clear History
   memset(HFreqs,0,sizeof(HFreqs));
   memset(HCount,0,sizeof(HCount));

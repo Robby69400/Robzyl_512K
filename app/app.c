@@ -381,7 +381,15 @@ void APP_StartListening(FUNCTION_Type_t Function)
 {
 
 	//VFO sensitivity test KOLYAN
- 	BK4819_WriteRegister(BK4819_REG_13, 0x03BE);
+/*  	BK4819_WriteRegister(BK4819_REG_40, 13520);
+  	BK4819_WriteRegister(BK4819_REG_29, 43840);
+  	BK4819_WriteRegister(BK4819_REG_19, 4161);
+  	BK4819_WriteRegister(BK4819_REG_73, 18066);
+  	BK4819_WriteRegister(BK4819_REG_13, 958);
+  	BK4819_WriteRegister(BK4819_REG_3C, 20360);
+  	BK4819_WriteRegister(BK4819_REG_43, 13896);
+  	BK4819_WriteRegister(BK4819_REG_2B, 49152); */
+
 	const unsigned int chan = 0;
 	if (gFmRadioMode)
 		BK1080_Init(0, false);
