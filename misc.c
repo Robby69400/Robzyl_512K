@@ -32,7 +32,7 @@ const uint8_t     vfo_state_resume_countdown_500ms =  2500 / 500;  // 2.5 second
 const uint8_t     menu_timeout_500ms               =  20000 / 500;  // 20 seconds
 const uint16_t    menu_timeout_long_500ms          = 120000 / 500;  // 2 minutes
 
-const uint8_t     key_input_timeout_500ms          =  8000 / 500;  // 8 seconds
+const uint8_t     key_input_timeout_500ms          =  1000 / 500;  // 2 seconds
 
 const uint16_t    key_repeat_delay_10ms            =   400 / 10;   // 400ms
 const uint16_t    key_repeat_10ms                  =    80 / 10;   // 80ms .. MUST be less than 'key_repeat_delay'

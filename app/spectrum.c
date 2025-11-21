@@ -87,9 +87,9 @@ const uint16_t listenSteps[] = {0, 10, 30, 60, 300, 600, 1200, 1800}; //in s
 #define LISTEN_STEP_COUNT 7
 
 uint8_t IndexPS = 0;
-static const char *labelsPS[] = {"OFF","50ms","100ms","500ms", "1s", "5s", "10s", "20s", "30s"};
-const uint16_t PS_Steps[] = {0, 5, 10, 50, 100, 500, 1000, 2000, 3000}; //in 10 ms
-#define PS_STEP_COUNT 8
+static const char *labelsPS[] = {"OFF","100ms","500ms", "1s", "2s", "5s"};
+const uint16_t PS_Steps[] = {0, 10, 50, 100, 200, 500}; //in 10 ms
+#define PS_STEP_COUNT 5
 
 
 static uint32_t lastReceivingFreq = 0;

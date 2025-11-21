@@ -815,12 +815,44 @@ void cancelUserInputModes(void)
 	}
 }
 
+void validateChannelInput(void)
+{
+	if (IS_MR_CHANNEL(gTxVfo->CHANNEL_SAVE) && (gInputBoxIndex == 1 || gInputBoxIndex == 2))
+	{
+		uint16_t Channel;
+
+		// Calcul du canal selon le nombre de chiffres saisis
+		switch (gInputBoxIndex) {
+			case 2:
+				// 2 chiffres saisis (validation automatique)
+				Channel = ((gInputBox[0] * 10) + gInputBox[1]) - 1;
+				break;
+			case 1:
+				// 1 chiffre saisi (validation automatique)
+				Channel = gInputBox[0] - 1;
+				break;
+			default:
+				return;
+		}
+
+		if (RADIO_CheckValidChannel(Channel, false, 0)) 
+		{
+			gEeprom.MrChannel     = Channel;
+			gEeprom.ScreenChannel = Channel;
+			gRequestSaveVFO       = true;
+			gVfoConfigureMode     = VFO_CONFIGURE_RELOAD;
+		}
+		
+		// Réinitialiser dans tous les cas
+		gInputBoxIndex = 0;
+		gUpdateDisplay = true;
+	}
+}
+
 // this is called once every 500ms
 void APP_TimeSlice500ms(void)
 {
 	bool exit_menu = false;
-
-	// Skipped authentic device check
 
 	if (gKeypadLocked > 0)
 		if (--gKeypadLocked == 0)
@@ -830,8 +862,15 @@ void APP_TimeSlice500ms(void)
 	{
 		if (--gKeyInputCountdown == 0)
 		{
-			cancelUserInputModes();
-
+			if (IS_MR_CHANNEL(gTxVfo->CHANNEL_SAVE) && (gInputBoxIndex == 1 || gInputBoxIndex == 2))
+			{
+				validateChannelInput();
+			}
+			else
+			{
+				// Pas de timeout pour les fréquences
+				if (!IS_FREQ_CHANNEL(gTxVfo->CHANNEL_SAVE)) cancelUserInputModes();
+			}
 		}
 	}
 

@@ -144,7 +144,6 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 {
 	if (bKeyHeld)
 	{	// key held down
-
 		if (bKeyPressed)
 		{
 			if (gScreenToDisplay == DISPLAY_MAIN)
@@ -154,39 +153,58 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 					gInputBoxIndex        = 0;
 					gRequestDisplayScreen = DISPLAY_MAIN;
 				}
-
 				gWasFKeyPressed = false;
 				gUpdateStatus   = true;
-
 				processFKeyFunction(Key, false);
 			}
 		}
-
 		return;
 	}
 
 	if (bKeyPressed)
 	{	// key is pressed
-		return;                                 // don't use the key till it's released
+		return; // don't use the key till it's released
 	}
 
 	if (!gWasFKeyPressed)
 	{	// F-key wasn't pressed
-
-		gKeyInputCountdown = key_input_timeout_500ms;
-
+		// Vérifier si on est en mode VFO (fréquence)
+		bool isFreqMode = IS_FREQ_CHANNEL(gTxVfo->CHANNEL_SAVE);
+		
+		// Pas de timeout pour l'entrée de fréquence, seulement pour les canaux
+		if (!isFreqMode)
+			gKeyInputCountdown = key_input_timeout_500ms;
+		
+		
+		// Chiffres normaux
 		INPUTBOX_Append(Key);
-
 		gRequestDisplayScreen = DISPLAY_MAIN;
 
-		if (IS_MR_CHANNEL(gTxVfo->CHANNEL_SAVE))
-		{	// user is entering Channel number
-
+		// Gestion des canaux MR
+		if (!isFreqMode)
+		{
 			uint16_t Channel;
-
-			if (gInputBoxIndex != 3)
+			
+			// Si on a 1 ou 2 chiffres, attendre le timeout
+			if (gInputBoxIndex == 1 || gInputBoxIndex == 2)
+				return;
+				
+			// 3 chiffres = validation immédiate
+			if (gInputBoxIndex == 3)
 			{
-				gRequestDisplayScreen = DISPLAY_MAIN;
+				Channel = ((gInputBox[0] * 100) + (gInputBox[1] * 10) + gInputBox[2]) - 1;
+				
+				if (!RADIO_CheckValidChannel(Channel, false, 0)) 
+				{
+					gInputBoxIndex = 0;
+					return;
+				}
+
+				gEeprom.MrChannel     = Channel;
+				gEeprom.ScreenChannel = Channel;
+				gRequestSaveVFO       = true;
+				gVfoConfigureMode     = VFO_CONFIGURE_RELOAD;
+				gInputBoxIndex        = 0;
 				return;
 			}
 
@@ -329,6 +347,16 @@ static void MAIN_Key_UP_DOWN(bool bKeyPressed, bool bKeyHeld, int8_t Direction)
 
 void MAIN_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 {
+	if (Key == KEY_F)
+	{
+		if (bKeyPressed && !bKeyHeld)
+		{
+			gWasFKeyPressed = true;
+			// Pas de timeout pour F, reste actif jusqu'à action
+			gKeyInputCountdown = 0; // ou une valeur très grande
+		}
+		return;
+	}
 	if (gFmRadioMode && Key != KEY_PTT && Key != KEY_EXIT)
 		{
 			if (!bKeyHeld && bKeyPressed)
