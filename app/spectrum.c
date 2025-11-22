@@ -461,6 +461,7 @@ static void ToggleAFDAC(bool on) {
 
 static void SetF(uint32_t f) {
   if (f < 1400000 || f > 130000000) return;
+  if (SPECTRUM_PAUSED) return;
   BK4819_SetFrequency(f);
   BK4819_PickRXFilterPathBasedOnFrequency(f);
   uint16_t reg = BK4819_ReadRegister(BK4819_REG_30);
@@ -757,6 +758,7 @@ void FillfreqHistory(void) {
 
 
 static void ToggleRX(bool on) {
+    if (SPECTRUM_PAUSED) return;
     if(!on && SpectrumMonitor == 2) {isListening = 1;return;}
     isListening = on;
     // automatically switch modulation & bw if known chanel
@@ -2050,6 +2052,7 @@ case KEY_6:
     break;
   
     case KEY_SIDE1:
+        if (SPECTRUM_PAUSED) return;
         SpectrumMonitor++;
         if (SpectrumMonitor > 2) SpectrumMonitor = 0; // 0 normal, 1 Freq lock, 2 Monitor
 		    char monitorText[32];
@@ -2547,7 +2550,7 @@ static void Tick() {
       SYSTEM_DelayMs(10);
   }
 
-  if(!isListening && gIsPeak && !SpectrumMonitor) {
+  if(!isListening && gIsPeak && !SpectrumMonitor && !SPECTRUM_PAUSED) {
      LookupChannelInfo();
      SetF(peak.f);
      ToggleRX(true);

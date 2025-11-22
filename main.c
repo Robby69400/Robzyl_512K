@@ -87,7 +87,7 @@ void Main(void)
 	RADIO_SetupRegisters(true);
 
 	BK4819_InitAGC(gTxVfo->Modulation);
-	//Test Kolyan BK4819_SetAGC(1);
+	BK4819_SetAGC(1); //Test Kolyan
 
 	for (i = 0; i < ARRAY_SIZE(gBatteryVoltages); i++)
 		BOARD_ADC_GetBatteryInfo(&gBatteryVoltages[i]);

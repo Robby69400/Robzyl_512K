@@ -69,6 +69,7 @@ const t_menu_item MenuList[] =
 	{"TxOffs",  MENU_OFFSET        },
 	{"RxOffs",  MENU_RX_OFFSET     },
 	{"BatSav",  MENU_SAVE          },
+	{"ChSave",  MENU_MEM_CH        },
 	// hidden menu items from here on
 	// enabled if pressing upper side button at power-on
 	{"Reset",   MENU_RESET         },
@@ -76,8 +77,7 @@ const t_menu_item MenuList[] =
 	{"BatCal",  MENU_BATCAL        },
 	{"BatTyp",  MENU_BATTYP        },
 	{"TxPwr",   MENU_TXP           },
-	{"BusyCL",  MENU_BCL           },
-	{"ChSave",  MENU_MEM_CH        },
+	{"BusyCL",  MENU_BCL           },	
 	{"BatVol",  MENU_VOL           },
 	{"POnMsg",  MENU_PONMSG        },
 	{"KeyLck",  MENU_AUTOLK        },
