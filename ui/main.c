@@ -33,6 +33,8 @@
 #include "ui/inputbox.h"
 #include "ui/main.h"
 #include "ui/ui.h"
+#include "debugging.h"
+
 center_line_t center_line = CENTER_LINE_NONE;
 
 // ***************************************************************************
@@ -178,7 +180,8 @@ void UI_DisplayMain(void)
 		}
 		
 		unsigned int state = VfoState;
-		uint32_t frequency = gEeprom.VfoInfo.pRX->Frequency;
+		//uint32_t frequency = gEeprom.VfoInfo.pRX->Frequency;
+		uint32_t frequency = BOARD_fetchChannelFrequency(gEeprom.ScreenChannel);
 
 		if (state != VFO_STATE_NORMAL)
 		{
@@ -210,6 +213,9 @@ void UI_DisplayMain(void)
 				String[7] = 0;
 				// show the main large frequency digits
 				UI_DisplayFrequency(String, 0, line+4, false);
+
+
+char str[64] = "";sprintf(str, "%s %d\r\n", String,frequency);LogUart(str);
 
 				if (IS_MR_CHANNEL(gEeprom.ScreenChannel) && state == VFO_STATE_NORMAL)
 				{	// it's a Channel

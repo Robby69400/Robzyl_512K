@@ -369,7 +369,7 @@ void ShowOSDPopup(const char *str)
 {
     strncpy(osdPopupText, str, sizeof(osdPopupText)-1);
     osdPopupText[sizeof(osdPopupText)-1] = '\0';  // Zabezpieczenie przed przepełnieniem
-    osdPopupTimer = 800;
+    osdPopupTimer = 1500;
     UI_DisplayPopup(osdPopupText);
     ST7565_BlitFullScreen();
 }
@@ -559,6 +559,48 @@ void TrimTrailingChars(char *str) {
 void ReadChannelName(uint16_t Channel, char *name) {
     EEPROM_ReadBuffer(ADRESS_NAMES + Channel * 16, (uint8_t *)name, 12);
     TrimTrailingChars(name);
+}
+
+// *****************************************************************************
+// Fonction : Supprime la fréquence sélectionnée de la liste d'historique en RAM
+// *****************************************************************************
+static void DeleteHistoryItem(void) {
+    // Vérification de base
+    if (!historyListActive || indexFs == 0) return;
+    if (historyListIndex >= indexFs) {
+        // L'index est hors limite, on le corrige (au dernier élément valide)
+        historyListIndex = (indexFs > 0) ? indexFs - 1 : 0;
+        if (indexFs == 0) return;
+    }
+
+    uint8_t indexToDelete = historyListIndex;
+
+    // Décaler tous les éléments suivants d'une position vers le haut
+    for (uint8_t i = indexToDelete; i < indexFs - 1; i++) {
+        HFreqs[i]       = HFreqs[i + 1];
+        HCount[i]       = HCount[i + 1];
+        HBlacklisted[i] = HBlacklisted[i + 1];
+    }
+    
+    // Réduire le compteur d'éléments dans la liste
+    indexFs--;
+    
+    // Nettoyer la nouvelle dernière entrée et rétablir le marqueur de fin logique
+    HFreqs[indexFs]       = 0;
+    HCount[indexFs]       = 0;
+    HBlacklisted[indexFs] = 0xFF; // Rétablit le marqueur 0xFF pour la cohérence
+
+    // Ajuster l'index de sélection
+    // Si nous avons supprimé le dernier élément, la sélection passe au nouvel élément final.
+    if (historyListIndex >= indexFs && indexFs > 0) {
+        historyListIndex = indexFs - 1;
+    } else if (indexFs == 0) {
+        historyListIndex = 0;
+    }
+    
+    // Mettre à jour l'affichage
+    ShowOSDPopup("Deleted");
+    gUpdateDisplay = true;
 }
 
 
@@ -781,48 +823,39 @@ static void ToggleAudio(bool on) {
   }
 }
 
-void FillfreqHistory(void) {
+void FillfreqHistory(void)
+{
+    if (peak.f == 0)
+        return;
 
-    if (peak.f == 0) return;
-
-    // Recherche si la fréquence existe déjà
+    // Vérifier si la fréquence existe déjà
     for (uint8_t i = 0; i < indexFs; i++) {
         if (HFreqs[i] == peak.f) {
-            if (lastReceivingFreq != peak.f && gCounthistory) {
-                lastReceivingFreq = peak.f;
-                HCount[i]++;
-            } else if (!gCounthistory) {
+
+            if (gCounthistory) {
+                if (lastReceivingFreq != peak.f)
+                    HCount[i]++;
+            } else {
                 HCount[i]++;
             }
+
+            lastReceivingFreq = peak.f;
             historyListIndex = i;
             return;
         }
     }
 
-    // Nouvelle fréquence → ajout à la suite
-    if (indexFs < HISTORY_SIZE - 1) {
-        HFreqs[indexFs]       = peak.f;
-        HCount[indexFs]       = 1;
-        HBlacklisted[indexFs] = 0; // pas blacklistée
-        historyListIndex      = indexFs;
+    // Ajout nouvelle fréquence
+    HFreqs[indexFs] = peak.f;
+    HCount[indexFs] = 1;
+    HBlacklisted[indexFs] = 0;
+    historyListIndex = indexFs;
 
-        indexFs++;
-
-        // Marque de fin logique (en RAM)
-        HFreqs[indexFs]       = 0;
-        HCount[indexFs]       = 0;
-        HBlacklisted[indexFs] = 0xFF;
-    } else {
-        // Mémoire pleine → on peut choisir d’écraser le plus ancien
-        indexFs = 0;
-        HFreqs[indexFs]       = peak.f;
-        HCount[indexFs]       = 1;
-        HBlacklisted[indexFs] = 0;
-        historyListIndex      = indexFs;
-    }
-
-    historyScrollOffset = 0;
+    indexFs++;
+    if (indexFs >= HISTORY_SIZE)
+        indexFs = 0; // buffer circulaire stable
 }
+
 
 
 static void ToggleRX(bool on) {
@@ -1978,11 +2011,13 @@ static void OnKeyDown(uint8_t key) {
 
 
       case KEY_3:
-         ToggleListeningBW(1);
-		 // NOWE OSD dla zmiany BW
-    char bwText[32];
-    sprintf(bwText, "BW: %s", bwNames[settings.listenBw]);
-    ShowOSDPopup(bwText);
+      if (historyListActive) { DeleteHistoryItem();}
+      else {
+        ToggleListeningBW(1);
+        char bwText[32];
+        sprintf(bwText, "BW: %s", bwNames[settings.listenBw]);
+        ShowOSDPopup(bwText);
+      }
 
       break;
      
@@ -3148,10 +3183,10 @@ static void GetHistoryItemText(uint8_t index, char* buffer) {
     char freqStr[10];
     char Name[12]="";
     uint8_t dcount;
+    if (!HFreqs[index]) return;
     snprintf(freqStr, sizeof(freqStr), "%u.%05u", HFreqs[index]/100000, HFreqs[index]%100000);
     RemoveTrailZeros(freqStr);
     uint16_t Hchannel = BOARD_gMR_fetchChannel(HFreqs[index]);
-    
     if(gCounthistory) dcount = HCount[index];
     else dcount = HCount[index]/2;
     if (Hchannel != 0xFFFF) ReadChannelName(Hchannel,Name);
