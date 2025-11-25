@@ -216,6 +216,11 @@ void UI_DisplayMain(void)
 
 				if (IS_MR_CHANNEL(gEeprom.ScreenChannel) && state == VFO_STATE_NORMAL)
 				{	// it's a Channel
+					const ChannelAttributes_t att = gMR_ChannelAttributes[gEeprom.ScreenChannel];
+					if (att.scanlist > 0) {
+						sprintf(String, "S%d", att.scanlist);
+						GUI_DisplaySmallest(String, 117, 34,false,true);
+					}
 					const bool inputting = (gInputBoxIndex == 0 ) ? false : true;
 					if (!inputting) {
 						char DisplayString[22];
@@ -229,7 +234,7 @@ void UI_DisplayMain(void)
 						else
 						{
 						    // concaténer "M<num> " devant le nom
-						    sprintf(DisplayString, "M%u %s", ch_num, String);
+						    sprintf(DisplayString, "M%u:%s", ch_num, String);
 						}
 					
 						// afficher à l’écran

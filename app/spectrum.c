@@ -3318,6 +3318,7 @@ static void RenderHistoryList() {
         if (itemIndex >= CountValidHistoryItems()) break;
         char itemText[32];
         GetHistoryItemText(itemIndex, itemText);
+        if (strcmp(itemText, "") == 0) continue;
         uint8_t lineNumber = FIRST_ITEM_LINE + i;
         
         if (itemIndex == selectedIndex) {
