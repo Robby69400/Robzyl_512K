@@ -186,18 +186,39 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 			uint16_t Channel;
 			
 			// Si on a 1 ou 2 chiffres, attendre le timeout
-			if (gInputBoxIndex != 3){
-				gRequestDisplayScreen = DISPLAY_MAIN;
+			if (gInputBoxIndex == 1 || gInputBoxIndex == 2)
+				return;
+				
+			// 3 chiffres = validation immédiate
+			if (gInputBoxIndex == 3)
+			{
+				Channel = ((gInputBox[0] * 100) + (gInputBox[1] * 10) + gInputBox[2]) - 1;
+				
+				if (!RADIO_CheckValidChannel(Channel, false, 0)) 
+				{
+					gInputBoxIndex = 0;
+					return;
+				}
+
+				gEeprom.MrChannel     = Channel;
+				gEeprom.ScreenChannel = Channel;
+				gRequestSaveVFO       = true;
+				gVfoConfigureMode     = VFO_CONFIGURE_RELOAD;
+				gInputBoxIndex        = 0;
 				return;
 			}
 
 			gInputBoxIndex = 0;
+
 			Channel = ((gInputBox[0] * 100) + (gInputBox[1] * 10) + gInputBox[2]) - 1;
+
 			if (!RADIO_CheckValidChannel(Channel, false,0)) return;
+
 			gEeprom.MrChannel     = Channel;
 			gEeprom.ScreenChannel = Channel;
 			gRequestSaveVFO       = true;
 			gVfoConfigureMode     = VFO_CONFIGURE_RELOAD;
+
 			return;
 		}
 		if (IS_FREQ_CHANNEL(gTxVfo->CHANNEL_SAVE))
@@ -221,6 +242,7 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 
 	gWasFKeyPressed = false;
 	gUpdateStatus   = true;
+
 	processFKeyFunction(Key, true);
 }
 

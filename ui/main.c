@@ -33,8 +33,6 @@
 #include "ui/inputbox.h"
 #include "ui/main.h"
 #include "ui/ui.h"
-//#include "debugging.h"
-
 center_line_t center_line = CENTER_LINE_NONE;
 
 // ***************************************************************************
@@ -168,7 +166,6 @@ void UI_DisplayMain(void)
 	const unsigned int line       = line0 ;
 	uint8_t           *p_line    = gFrameBuffer[line + 5];
 	unsigned int       mode       = 0;
-	uint32_t frequency;
 
 		if (IS_MR_CHANNEL(gEeprom.ScreenChannel))
 		{	// Channel mode
@@ -181,8 +178,7 @@ void UI_DisplayMain(void)
 		}
 		
 		unsigned int state = VfoState;
-		frequency = gEeprom.VfoInfo.pRX->Frequency;
-		
+		uint32_t frequency = gEeprom.VfoInfo.pRX->Frequency;
 
 		if (state != VFO_STATE_NORMAL)
 		{
@@ -191,7 +187,8 @@ void UI_DisplayMain(void)
 			UI_PrintString(state_list[state], 31, 0, line+2, 8);
 		}
 		
-		if (gInputBoxIndex > 0 && IS_FREQ_CHANNEL(gEeprom.ScreenChannel)){	// user entering a frequency
+		//if (gInputBoxIndex > 0 && IS_FREQ_CHANNEL(gEeprom.ScreenChannel)){	// user entering a frequency
+		if (gInputBoxIndex > 0 && gEeprom.ScreenChannel > MR_CHANNEL_LAST){	// user entering a frequency
 				const char * ascii = INPUTBOX_GetAscii();
 				bool isGigaF = frequency>=100000000;
 				sprintf(String, "%.*s.%.3s", 3 + isGigaF, ascii, ascii + 3 + isGigaF);
@@ -206,7 +203,9 @@ void UI_DisplayMain(void)
 				if (gCurrentFunction == FUNCTION_TRANSMIT)
 				{	// transmitting
 				frequency = gEeprom.VfoInfo.pTX->Frequency;
-				} else frequency = BOARD_fetchChannelFrequency(gEeprom.ScreenChannel);
+				} else {
+					if(gEeprom.ScreenChannel <= MR_CHANNEL_LAST) frequency = BOARD_fetchChannelFrequency(gEeprom.ScreenChannel);
+				}
 				// Always show frequency
 				sprintf(String, "%3u.%05u", frequency / 100000, frequency % 100000);   //temp
 				// show the remaining 2 small frequency digits
@@ -214,7 +213,6 @@ void UI_DisplayMain(void)
 				String[7] = 0;
 				// show the main large frequency digits
 				UI_DisplayFrequency(String, 0, line+4, false);
-
 
 				if (IS_MR_CHANNEL(gEeprom.ScreenChannel) && state == VFO_STATE_NORMAL)
 				{	// it's a Channel
