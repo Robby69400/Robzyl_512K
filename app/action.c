@@ -37,6 +37,7 @@
 #include "ui/inputbox.h"
 #include "ui/ui.h"
 #include "spectrum.h"
+//#include "debugging.h"
 
 static void ACTION_FlashLight(void)
 {
@@ -183,9 +184,6 @@ void ACTION_Handle(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 		case KEY_SIDE2:
 			funcShort = gEeprom.KEY_2_SHORT_PRESS_ACTION;
 			funcLong  = gEeprom.KEY_2_LONG_PRESS_ACTION;
-			break;
-		case KEY_MENU:
-			funcLong  = gEeprom.KEY_M_LONG_PRESS_ACTION;
 			break;
 		default:
 			break;

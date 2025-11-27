@@ -156,7 +156,6 @@ typedef struct {
 	uint8_t               field78_0x96;
 	uint8_t               field79_0x97;
 
-	uint8_t 			  KEY_M_LONG_PRESS_ACTION;
 	uint8_t               BACKLIGHT_MIN;
 #ifdef ENABLE_BLMIN_TMP_OFF
 	BLMIN_STAT_t		  BACKLIGHT_MIN_STAT;

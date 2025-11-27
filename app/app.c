@@ -75,53 +75,6 @@ static void UpdateRSSI()
     gCurrentRSSI = rssi;
 }
 
-/* static void DrawLine(int x, int y1, int y2)
-{
-    if (y1 > y2) {
-        int tmp = y1; y1 = y2; y2 = tmp;
-    }
-    for (int y = y1; y <= y2; y++) {
-        if (y < 0 || y >= LCD_HEIGHT) continue;
-        uint8_t page   = y / 8;
-        uint8_t offset = y % 8;
-        gFrameBuffer[page][x] |= (1 << offset);
-    }
-} */
-
-//#include "debugging.h"
-
-/* #define GLITCH_WIDTH   128
-
-uint8_t glitchScope[GLITCH_WIDTH];   // buffer décalé
-
-void UpdateAndDrawGlitchScope(void)
-{
-    memmove(&glitchScope[0], &glitchScope[1], GLITCH_WIDTH - 1);
-    glitchScope[GLITCH_WIDTH - 1] = BK4819_GetGlitchIndicator();
-
-    memset(&gFrameBuffer[0][0], 0, 2 * GLITCH_WIDTH);
-    
-	int16_t maxRssi = 0;
-    for (int i = 0; i < 128; i++) {
-        if (glitchScope[i] > maxRssi) maxRssi = glitchScope[i];
-    }
-    //char str[64] = "";sprintf(str, "%d\r\n", maxRssi );LogUart(str);
-    int prevY = -1;
-	int scaled;
-    for (int x = 0; x < 128; x++) {
-        scaled = (glitchScope[x]) * 16 / maxRssi;
-		int y = 15 - scaled;
-        if (prevY >= 0) {
-            DrawLine(x, prevY, y);
-        } else {
-            DrawLine(x, y, y);
-        }
-        prevY = y;
-    }
-
-	
-} */
-
 void DrawNumeric(void)
 {
     int pos = 0;
@@ -1134,15 +1087,9 @@ static void ProcessKey(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 				return;
 			}
 		}
-		// KEY_MENU has a special treatment here, because we want to pass hold event to ACTION_Handle
-		// but we don't want it to complain when initial press happens
-		// we want to react on realese instead
-		else if (Key != KEY_SIDE1 && Key != KEY_SIDE2 &&        // pass side buttons
-			     !(Key == KEY_MENU && bKeyHeld)) // pass KEY_MENU held
+		else if (Key != KEY_SIDE1 && Key != KEY_SIDE2)
 		{
-			if ((!bKeyPressed || bKeyHeld || (Key == KEY_MENU && bKeyPressed)) && // prevent released or held, prevent KEY_MENU pressed
-				!(Key == KEY_MENU && !bKeyPressed))  // pass KEY_MENU released
-				return;
+			if (!bKeyPressed || bKeyHeld) return;
 
 			// keypad is locked, tell the user
 			gKeypadLocked  = 4;          // 2 seconds

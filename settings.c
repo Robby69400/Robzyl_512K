@@ -26,7 +26,7 @@
 #include "misc.h"
 #include "settings.h"
 #include "board.h"
-#include "debugging.h"
+//#include "debugging.h"
 
 EEPROM_Config_t gEeprom;
 
@@ -62,7 +62,6 @@ void SETTINGS_SaveSettings(void)
 	State[7] = gEeprom.VFO_OPEN;
 	EEPROM_WriteBuffer(0x0E78, State);
 
-	State[0] |= gEeprom.KEY_M_LONG_PRESS_ACTION << 1;
 	State[1] = gEeprom.KEY_1_SHORT_PRESS_ACTION;
 	State[2] = gEeprom.KEY_1_LONG_PRESS_ACTION;
 	State[3] = gEeprom.KEY_2_SHORT_PRESS_ACTION;

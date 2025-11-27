@@ -276,40 +276,8 @@ static void MAIN_Key_EXIT(bool bKeyPressed, bool bKeyHeld)
 
 }
 
-static void MAIN_Key_MENU(const bool bKeyPressed, const bool bKeyHeld)
+static void MAIN_Key_MENU()
 {
-	if (bKeyPressed && !bKeyHeld)
-		// menu key pressed
-
-	if (bKeyHeld)
-	{	// menu key held down (long press)
-
-		if (bKeyPressed)
-		{	// long press MENU key
-
-			gWasFKeyPressed = false;
-
-			if (gScreenToDisplay == DISPLAY_MAIN)
-			{
-				if (gInputBoxIndex > 0)
-				{	// delete any inputted chars
-					gInputBoxIndex        = 0;
-					gRequestDisplayScreen = DISPLAY_MAIN;
-				}
-
-				gWasFKeyPressed = false;
-				gUpdateStatus   = true;
-
-				ACTION_Handle(KEY_MENU, bKeyPressed, bKeyHeld);
-			}
-		}
-
-		return;
-	}
-
-	if (!bKeyPressed )
-	{	// menu key released
-
 		const bool bFlag = (gInputBoxIndex == 0);
 		gInputBoxIndex   = 0;
 
@@ -322,7 +290,6 @@ static void MAIN_Key_MENU(const bool bKeyPressed, const bool bKeyHeld)
 		{
 			gRequestDisplayScreen = DISPLAY_MAIN;
 		}
-	}
 }
 
 static void MAIN_Key_UP_DOWN(bool bKeyPressed, bool bKeyHeld, int8_t Direction)
@@ -384,7 +351,7 @@ void MAIN_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 			MAIN_Key_DIGITS(Key, bKeyPressed, bKeyHeld);
 			break;
 		case KEY_MENU:
-			MAIN_Key_MENU(bKeyPressed, bKeyHeld);
+			MAIN_Key_MENU();
 			break;
 		case KEY_UP:
 			MAIN_Key_UP_DOWN(bKeyPressed, bKeyHeld, 1);

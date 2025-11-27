@@ -58,7 +58,6 @@ const t_menu_item MenuList[] =
 	{"F1Long",  MENU_F1LONG        },
 	{"F2Shrt",  MENU_F2SHRT        },
 	{"F2Long",  MENU_F2LONG        },
-	{"M Long",  MENU_MLONG         },
 	{"BltTRX",  MENU_ABR_ON_TX_RX  },
 	{"SqTone",  MENU_SQL_TONE      },
 	{"RxDCS",   MENU_R_DCS         },
@@ -566,7 +565,6 @@ void UI_DisplayMenu(void)
 			case MENU_F1LONG:
 			case MENU_F2SHRT:
 			case MENU_F2LONG:
-			case MENU_MLONG:
 				strcpy(String, gSubMenu_SIDEFUNCTIONS[gSubMenuSelection].name);
 				break;
 
