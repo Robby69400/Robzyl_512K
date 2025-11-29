@@ -47,7 +47,7 @@ void UI_DisplayStatus()
 	// **************
 
 	// POWER-SAVE indicator
-	/*if (gCurrentFunction == FUNCTION_TRANSMIT)
+	if (gCurrentFunction == FUNCTION_TRANSMIT)
 	{
 		memmove(line + x, BITMAP_TX, sizeof(BITMAP_TX));
 		x1 = x + sizeof(BITMAP_TX);
@@ -60,7 +60,7 @@ void UI_DisplayStatus()
 		memmove(line + x, BITMAP_RX, sizeof(BITMAP_RX));
 		x1 = x + sizeof(BITMAP_RX);
 	}
-	else*/
+	else
 	if (gCurrentFunction == FUNCTION_POWER_SAVE)
 	{
 		memmove(line + x, BITMAP_POWERSAVE, sizeof(BITMAP_POWERSAVE));

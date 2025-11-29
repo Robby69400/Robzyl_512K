@@ -1387,13 +1387,13 @@ switch(SpectrumMonitor) {
 
 }
 
-static void formatHistory(char *buf, uint8_t index, uint16_t Channel, uint32_t freq) {
+static void formatHistory(char *buf, uint16_t Channel, uint32_t freq) {
     char freqStr[10];
     char Name[12];
     snprintf(freqStr, sizeof(freqStr), "%u.%05u", freq / 100000, freq % 100000);
     RemoveTrailZeros(freqStr);
     if (Channel != 0xFFFF) ReadChannelName(Channel, Name);
-    snprintf(buf, 19, "%s %s:%u", freqStr,Name, HCount[index]);
+    snprintf(buf, 19, "%s %s", freqStr,Name);
 }
 
 
@@ -1506,7 +1506,7 @@ static void DrawF(uint32_t f) {
         }
         if (isListening){
             if (MaxListenTime){
-                  len = sprintf(&line3b[pos],"Max %d / %s", spectrumElapsedCount/1000, labels[IndexMaxLT]);
+                  len = sprintf(&line3b[pos],"Max %d/%s", spectrumElapsedCount/1000, labels[IndexMaxLT]);
                   pos += len;
             } else {
                   len = sprintf(&line3b[pos],"Rx %d ", spectrumElapsedCount/1000); //elapsed receive time
@@ -1514,22 +1514,32 @@ static void DrawF(uint32_t f) {
       }
     
     if (f > 0 && historyListIndex <HISTORY_SIZE) {
-      formatHistory(line3, historyListIndex, channelFd, f);
+      formatHistory(line3, channelFd, f);
     }
     else {
-        snprintf(line3, sizeof(line3), "0:EMPTY(0)");
+        snprintf(line3, sizeof(line3), "EMPTY");
       }
     
     // ------------------------------------------------------------
     // AFFICHAGE
     // ------------------------------------------------------------
     if (classic) {
+        if (ShowLines <6) {
         if (ShowLines == 0) ArrowLine = 0; //Draw nothing
         if (ShowLines == 1) {UI_DisplayFrequency(line1,  0, 0, 0);   ArrowLine = 2;}
-        if (ShowLines > 1)  {UI_PrintStringSmall(line1b, 1, 1, 0,1); ArrowLine = 1;}
+        if (ShowLines > 1 )  {UI_PrintStringSmall(line1b, 1, 1, 0,1); ArrowLine = 1;}
         if (ShowLines > 2)  {UI_PrintStringSmall(line2,  1, 1, 1,1); ArrowLine = 2;}
         if (ShowLines == 4)  {UI_PrintStringSmall(line3b,1, 1, 2,0); ArrowLine = 2;}
         if (ShowLines == 5)  {UI_PrintStringSmall(line3, 1, 1, 2,1); ArrowLine = 3;}
+        }
+        else if (ShowLines == 6)  {
+          GUI_DisplaySmallest(line1b, 0, 8,  true,true);
+          GUI_DisplaySmallest(line2,  64, 8,  true,true);
+          GUI_DisplaySmallest(line3b, 0, 14, true,true);
+          GUI_DisplaySmallest(line3,  64, 14, true,true);
+          ArrowLine = 3;
+        }
+        
     } else {
         DrawMeter(6);
         if (StringCode[0]) {UI_PrintStringSmall(line1b, 1, 1, 0,1);}
@@ -2081,7 +2091,7 @@ static void OnKeyDown(uint8_t key) {
           SpectrumMonitor = 0;
       } else {
           ShowLines++; 
-          if (ShowLines > 5) ShowLines = 0;
+          if (ShowLines > 6) ShowLines = 0;
       }
     break;
 
@@ -2106,7 +2116,7 @@ static void OnKeyDown(uint8_t key) {
             break;
         }
         else if(appMode==FREQUENCY_MODE) {UpdateCurrentFreq(true);}
-        else if (ShowLines > 4) {historyListIndex = (historyListIndex >0 ? historyListIndex-1 : 0);}
+        //else if (ShowLines > 4) {historyListIndex = (historyListIndex >0 ? historyListIndex-1 : 0);}
         else if(appMode==CHANNEL_MODE){
               BuildValidScanListIndices();
               static bool isFirst = true;
@@ -2140,7 +2150,7 @@ static void OnKeyDown(uint8_t key) {
             break;
         }
         else if(appMode==FREQUENCY_MODE){UpdateCurrentFreq(false);}
-        else if (ShowLines > 4) {if (historyListIndex < HISTORY_SIZE) historyListIndex++;}
+        //else if (ShowLines > 4) {if (historyListIndex < HISTORY_SIZE) historyListIndex++;}
         else if(appMode==CHANNEL_MODE){
             BuildValidScanListIndices();
             static bool isFirst = true;
@@ -3088,10 +3098,12 @@ static bool GetScanListLabel(uint8_t scanListIndex, char* bufferOut) {
         char freqStr[12];
         sprintf(freqStr, "%u.%05u", freq / 100000, freq % 100000);
         RemoveTrailZeros(freqStr);
-        sprintf(bufferOut, "%2d:%s%s", scanListIndex + 1, freqStr, settings.scanListEnabled[scanListIndex] ? " *" : "");
+        sprintf(bufferOut, "%-2d %-13s", scanListIndex + 1, freqStr);
     } else {
-        sprintf(bufferOut, "%2d:%s%s", scanListIndex + 1, channel_name, settings.scanListEnabled[scanListIndex] ? " *" : "");
+        sprintf(bufferOut, "%-2d %-13s", scanListIndex + 1, channel_name);
     }
+    sprintf(&bufferOut[16], "%s", settings.scanListEnabled[scanListIndex] ? "*" : " ");
+    
     return true;
 }
 

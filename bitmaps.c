@@ -29,7 +29,7 @@ const uint8_t BITMAP_POWERSAVE[8] =
 	#endif
 };
 
-/*const uint8_t BITMAP_TX[8] =
+const uint8_t BITMAP_TX[8] =
 {	// "TX"
 	0b00000000,
 	0b00000001,
@@ -51,7 +51,7 @@ const uint8_t BITMAP_RX[8] =
 	0b00000000,
 	0b00000000,
 	0b00000000
-};*/
+};
 
 const uint8_t BITMAP_BatteryLevel[2] =
 {
