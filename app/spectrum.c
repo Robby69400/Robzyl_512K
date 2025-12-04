@@ -51,10 +51,10 @@ static uint32_t free_ram_bytes(void)
 static volatile bool gSpectrumChangeRequested = false;
 static volatile uint8_t gRequestedSpectrumState = 0;
 
-#define HISTORY_SIZE 30
-uint32_t    HFreqs[HISTORY_SIZE];
-uint8_t     HCount[HISTORY_SIZE];
-bool  HBlacklisted[HISTORY_SIZE];
+#define HISTORY_SIZE 200
+static uint32_t    HFreqs[HISTORY_SIZE];
+static uint8_t     HCount[HISTORY_SIZE];
+static bool  HBlacklisted[HISTORY_SIZE];
 static bool gHistoryScan = false; // Indicateur de scan de l'historique
 
 /////////////////////////////Parameters://///////////////////////////
@@ -81,6 +81,7 @@ uint8_t Noislvl_ON = 50;              // case 16
 #define PARAMETER_COUNT 17
 ////////////////////////////////////////////////////////////////////
 
+static uint32_t Fmax = 0;
 uint32_t spectrumElapsedCount = 0;
 uint32_t SpectrumPauseCount = 0;
 bool SPECTRUM_PAUSED;
@@ -854,11 +855,11 @@ void FillfreqHistory(void)
     if (indexFs < HISTORY_SIZE) indexFs++;
     
     if (indexFs >= HISTORY_SIZE) {indexFs = 0;}
-    for (uint8_t i = 0; i < indexFs; i++) {
+/*     for (uint8_t i = 0; i < indexFs; i++) {
         char str[64];
         sprintf(str, "%d %d %lu\r\n", i, indexFs, HFreqs[i]);
         LogUart(str);
-    }
+    } */
 
 } 
 
@@ -1550,6 +1551,13 @@ static void DrawF(uint32_t f) {
         UI_PrintString(line2, 1, 1, 2, 8);
         UI_PrintString(line3b, 1, 1, 4, 8);
       }
+      sprintf(line3, "%d");
+      if (Fmax) {
+          FormatFrequency(Fmax, freqStr, sizeof(freqStr));
+          GUI_DisplaySmallest(freqStr,  50, 25, true,true);
+      }
+
+      
 }
 
 void LookupChannelInfo() {
@@ -2609,8 +2617,9 @@ static void UpdateScan() {
     return;
   }
   
-  // Fin du scan normal
+  // Scan end
   newScanStart = true; 
+  Fmax = peak.f;
   if (SpectrumSleepMs) {
       BK4819_Sleep();
       BK4819_ToggleGpioOut(BK4819_GPIO0_PIN28_RX_ENABLE, false);

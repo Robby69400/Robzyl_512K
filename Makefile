@@ -354,24 +354,27 @@ endif
 
 LDFLAGS =
 ifeq ($(ENABLE_CLANG),0)
-	LDFLAGS += -mcpu=cortex-m0 -nostartfiles -Wl,-T,firmware.ld
+    LDFLAGS += -mcpu=cortex-m0 -nostartfiles -Wl,-T,firmware.ld
 else
-#	Fix warning about implied executable stack
-	LDFLAGS += -z noexecstack -mcpu=cortex-m0 -nostartfiles -Wl,-T,firmware.ld, -V
+#   Fix warning about implied executable stack
+    LDFLAGS += -z noexecstack -mcpu=cortex-m0 -nostartfiles -Wl,-T,firmware.ld, -V
 endif
 
 # Use newlib-nano instead of newlib
 LDFLAGS += --specs=nano.specs
 
+# Ajout pour générer le fichier de mappage
+LDFLAGS += -Wl,-Map,$(TARGET).map
+
 ifeq ($(ENABLE_LTO),0)
-	# Throw away unneeded func/data sections like LTO does
-	LDFLAGS += -Wl,--gc-sections
+    # Throw away unneeded func/data sections like LTO does
+    LDFLAGS += -Wl,--gc-sections
 endif
 
 ifeq ($(DEBUG),1)
-	ASFLAGS += -g
-	CFLAGS  += -g
-	LDFLAGS += -g
+    ASFLAGS += -g
+    CFLAGS  += -g
+    LDFLAGS += -g
 endif
 
 INC =
