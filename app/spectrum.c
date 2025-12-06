@@ -1677,8 +1677,8 @@ static void SetTrigger50(){
 
 static void OnKeyDown(uint8_t key) {
 
-    if (!gBacklightCountdown) {BACKLIGHT_TurnOn(); return;}
-  
+    //if (!gBacklightCountdown) {BACKLIGHT_TurnOn(); return;}
+    BACKLIGHT_TurnOn();
   
     // NEW HANDLING: press of '4' key in SCAN_BAND_MODE
     if (appMode == SCAN_BAND_MODE && key == KEY_4 && currentState == SPECTRUM) {
