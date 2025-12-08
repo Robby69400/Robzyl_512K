@@ -134,9 +134,8 @@ void UI_DisplayMain(void)
 	
 	center_line = CENTER_LINE_NONE;
 
-	// clear the screen ОЧИСТКА ЭКРАНА
+	// clear the screen  ОЧИСТКА ЭКРАНА
 	memset(gFrameBuffer, 0, sizeof(gFrameBuffer));
-
 
 	if(gLowBattery && !gLowBatteryConfirmed) {
 		UI_DisplayPopup("LOW BATTERY");
@@ -154,8 +153,10 @@ void UI_DisplayMain(void)
 	uint8_t           *p_line    = gFrameBuffer[line + 5];
 	unsigned int       mode       = 0;
 
+	//ИМЯ КАНАЛА ДУБЛЬ
+
 		if (IS_MR_CHANNEL(gEeprom.ScreenChannel))
-		{	// Channel mode ИМЯ КАНАЛА
+		{	// Channel mode
 			const bool inputting = (gInputBoxIndex == 0 ) ? false : true;
 			if (!inputting)
 				sprintf(String, "M%u", gEeprom.ScreenChannel + 1);
@@ -163,7 +164,7 @@ void UI_DisplayMain(void)
 				sprintf(String, "M%.3s", INPUTBOX_GetAscii());  // show the input text
 			UI_PrintString(String , 0, 0, line+2 ,8);
 		}
-		
+		//end
 		unsigned int state = VfoState;
 		uint32_t frequency = gEeprom.VfoInfo.pRX->Frequency;
 
@@ -174,15 +175,14 @@ void UI_DisplayMain(void)
 			UI_PrintString(state_list[state], 31, 0, line+2, 8);
 		}
 		
-		//if (gInputBoxIndex > 0 && IS_FREQ_CHANNEL(gEeprom.ScreenChannel)){	// user entering a frequency ЧАСТОТА 1000
+		//if (gInputBoxIndex > 0 && IS_FREQ_CHANNEL(gEeprom.ScreenChannel)){	// user entering a frequency //ЧАСТОТА 1000
 		if (gInputBoxIndex > 0 && gEeprom.ScreenChannel > MR_CHANNEL_LAST){	// user entering a frequency
 				const char * ascii = INPUTBOX_GetAscii();
 				bool isGigaF = frequency>=100000000;
 				sprintf(String, "%.*s.%.3s", 3 + isGigaF, ascii, ascii + 3 + isGigaF);
-				// show the remaining 2 small frequency digits
+				// show the remaining 2 small frequency digits 
 				UI_PrintStringSmall(String + 7, 85, 0, line + 4,0); //temp
-				String[7] = 0;
-				// show the main large frequency digits
+				// show the main large frequency digits 
 				UI_DisplayFrequency(String, 16, line+4, false);
 			}
 			else
@@ -195,22 +195,24 @@ void UI_DisplayMain(void)
 				}
 				// Always show frequency
 				sprintf(String, "%3u.%05u", frequency / 100000, frequency % 100000);   //temp
-				// show the remaining 2 small frequency digits МАЛЫЕ НУЛИ
-					UI_PrintString(String + 7, 105, 0, line + 4,8); //шрифт стандартный старое
-					//UI_PrintStringSmall(String + 7, 107, 0, line + 6, 0); //шрифт тонкий координаты внизу
-					//UI_PrintStringSmall(String + 7, 105, 0, line + 5, 0); //мелкие нули
+				// show the remaining 2 small frequency digits МАЛЫЕ НУЛИ 000
+				UI_PrintString(String + 7, 105, 0, line + 4,8);
+				//UI_PrintStringSmall(String + 7, 105, 0, line + 5, 0); //small
 				String[7] = 0;
-				// show the main large frequency digits БОЛЬШАЯ ЧАСТОТА
+				// show the main large frequency digits
 				UI_DisplayFrequency(String, 19, line+4, false);
 
+				//НОМЕР СПИСКА СКАНИРОВАНИЯ
 				if (IS_MR_CHANNEL(gEeprom.ScreenChannel) && state == VFO_STATE_NORMAL)
-				{	// it's a Channel НОМЕР СПИСКА СКАНИРОВАНИЯ
+				{	// it's a Channel
 					const ChannelAttributes_t att = gMR_ChannelAttributes[gEeprom.ScreenChannel];
 					if (att.scanlist > 0) {
 						sprintf(String, "S%d", att.scanlist);
-						//GUI_DisplaySmallest(String, 117, 25,false,true); // 117.34 старые
+						//GUI_DisplaySmallest(String, 117, 34,false,true); //OLD
 						GUI_DisplaySmallest(String, 2, 42, false, true);
 					}
+
+					//НОМЕР И НАЗВАНИЕ КАНАЛА
 					const bool inputting = (gInputBoxIndex == 0 ) ? false : true;
 					if (!inputting) {
 						char DisplayString[22];
@@ -218,16 +220,16 @@ void UI_DisplayMain(void)
 
 						SETTINGS_FetchChannelName(String, gEeprom.ScreenChannel);
 						if (String[0] == 0)
-						{   // pas de nom, afficher juste le numéro
+						{   // pas de nom, afficher juste le numéro вывод номера
 						    sprintf(DisplayString, "M%u", ch_num);
 						}
 						else
 						{
-						    // concaténer "M<num> " devant le nom ЗНАК ИМЯ КАНАЛА
+						    // concaténer "M<num> " devant le nom добавить перед именем
 						    sprintf(DisplayString, "M%u:%s", ch_num, String);
 						}
 					
-						// afficher à l’écran
+						// afficher à l’écran вывод на экран
 						UI_PrintString(DisplayString, 0, 0, line+2, 8);
 					}
 				}
@@ -245,10 +247,12 @@ void UI_DisplayMain(void)
 			}
 		}
 
+
+		//ЗНАК МОДУЛЯЦИИ FM
 		if(Level) DrawSmallAntennaAndBars(p_line + LCD_WIDTH, Level);
 		String[0] = '\0';
-		
-		// show the modulation symbol ЗНАК МОДУЛЯЦИИ FM
+
+		// show the modulation symbol
 		const char * s = "";
 		const ModulationMode_t mod = gEeprom.VfoInfo.Modulation;
 		switch (mod){
@@ -264,13 +268,13 @@ void UI_DisplayMain(void)
 				s = gModulationStr[mod];
 			break;
 		}		
-		GUI_DisplaySmallest(s, 2, 35, false, true); //ЗНАК МОДУЛЯЦИИ FM, второй знак после скобки сдвиг вправо 6, 10, 14
-		//UI_PrintStringSmall(s, LCD_WIDTH + 25, 0, line +5,0); СТАРАЯ
+		GUI_DisplaySmallest(s, 2, 35, false, true); //ЗНАК МОДУЛЯЦИИ FM
+		//UI_PrintStringSmall(s, LCD_WIDTH + 25, 0, line +5,0); old
 
+		
 		// show the Ptt_Toggle_Mode КНОПКА ПТТ
 		
 		if (Ptt_Toggle_Mode) 	UI_PrintStringSmall("T", LCD_WIDTH + 8, 0, line +5,0);
-
 		if (state == VFO_STATE_NORMAL || state == VFO_STATE_ALARM)
 		
 		{	// show the TX power МОЩНОСТЬ
@@ -290,13 +294,13 @@ void UI_DisplayMain(void)
 			UI_PrintStringSmall(String, LCD_WIDTH + 0, 0, line + 5,0);
 		}
 
-		// === ПОЛОСА + ШАГ — в нижней строке (точно как ты хотел) ===
+		// === ПОЛОСА + ШАГ — в нижней строке STEP
 		{
 			char stepStr[8];
 			const uint16_t step = gStepFrequencyTable[gTxVfo->STEP_SETTING];
 
 			// Формируем шаг: 12.5 → "12.5", 25 → "25", 6.25 → "6.25"
-		if (step == 833) {
+			if (step == 833) {
 				strcpy(stepStr, "8.33k");
 			}
 			else {
@@ -315,7 +319,7 @@ void UI_DisplayMain(void)
 				}
 			}
 
-			// Шаг — правее полосы
+			// Шаг —  step
 			UI_PrintStringSmall(stepStr, LCD_WIDTH + 90, 0, line + 5, 0);
 
 			// 1. Формируем строку SQL: "SQL:X"
@@ -326,7 +330,7 @@ void UI_DisplayMain(void)
             // 2. Выводим SQL в самом левом углу
             UI_PrintStringSmall(sqlStr, LCD_WIDTH + 20, 0, line + 5, 0);
 
-			// Полоса
+			// Полоса band
 			UI_PrintStringSmall(bwNames[gEeprom.VfoInfo.CHANNEL_BANDWIDTH], LCD_WIDTH + 40, 0, line + 5, 0);
 
 			// SCR (если включён)
@@ -342,7 +346,19 @@ void UI_DisplayMain(void)
 
 	}
 
-	// МНОЖЕСТВО ЛИНИЙ — РАБОТАЕТ БЕЗ ОШИБОК
+	/*/ Пример: две вертикальные линии (слева и справа от частоты) LINE Y
+uint8_t positions[] = {0, 127};   // ← меняй позиции
+for (uint8_t i = 0; i < 2; i++) {
+    uint8_t x = positions[i];
+    for (uint8_t y = 8; y < 64; y++) {
+        if (y < 8)
+            gStatusLine[x] |= (1u << y);
+        else
+            gFrameBuffer[(y - 8) >> 3][x] |= (1u << ((y - 8) & 7));
+    }
+}
+
+	// МНОЖЕСТВО ЛИНИЙ — РАБОТАЕТ БЕЗ ОШИБОК LINE X
     uint8_t line_positions[] = { 0, 37 };   // ← меняй эти числа
     uint8_t num_lines = sizeof(line_positions) / sizeof(line_positions[0]);
 
@@ -356,7 +372,24 @@ void UI_DisplayMain(void)
             else
                 gFrameBuffer[(y - 8) >> 3][x] |= (1u << ((y - 8) & 7));
         }
+    }*/
+
+	// ПУНКТИРНЫЕ ГОРИЗОНТАЛЬНЫЕ ЛИНИИ: DOTTED LINE
+// Просто меняй числа в массиве и количество
+uint8_t line_heights[] = {24, 37};   // ←←←←← меняй высоты тут
+uint8_t line_count = 2;                      // ←←←←← количество линий
+
+for (uint8_t i = 0; i < line_count; i++)
+{
+    uint8_t y = line_heights[i];
+
+    for (uint8_t x = 0; x < 128; x += 2)     // шаг 2 = точка + пробел
+    {
+        if (y < 8)
+            gStatusLine[x] |= (1u << y);
+        else
+            gFrameBuffer[(y - 8) >> 3][x] |= (1u << ((y - 8) & 7));
     }
+}
 	ST7565_BlitFullScreen();
 }
-

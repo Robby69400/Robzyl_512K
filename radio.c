@@ -812,3 +812,16 @@ uint16_t RADIO_ValidMemoryChannelsCount(bool bCheckScanList, uint8_t VFO)
 		}
 	return count;
 }
+// Мгновенное обновление SQL после F+UP/DOWN
+void RADIO_ApplySquelch(void)
+{
+    RADIO_ConfigureSquelchAndOutputPower(gTxVfo);
+
+    BK4819_SetupSquelch(
+        gTxVfo->SquelchOpenRSSIThresh,
+        gTxVfo->SquelchCloseRSSIThresh,
+        gTxVfo->SquelchOpenNoiseThresh,
+        gTxVfo->SquelchCloseNoiseThresh,
+        gTxVfo->SquelchCloseGlitchThresh,
+        gTxVfo->SquelchOpenGlitchThresh);
+}

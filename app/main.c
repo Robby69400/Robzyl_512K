@@ -363,28 +363,37 @@ void MAIN_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 			break;
 
 
-		//КНОПКИ ВВЕРХ ВНИЗ SQL   
-		case KEY_UP:
-		case KEY_DOWN:
-			if (gWasFKeyPressed && bKeyPressed && !bKeyHeld) {
-				// F + UP/DOWN — меняем SQL
-				if (Key == KEY_UP) {
-					if (gEeprom.SQUELCH_LEVEL < 9)
-						gEeprom.SQUELCH_LEVEL++;
-				} else {
-					if (gEeprom.SQUELCH_LEVEL > 0)
-						gEeprom.SQUELCH_LEVEL--;
-				}
-				gRequestSaveSettings = true;   // сохраним в EEPROM
-				gUpdateDisplay = true;         // обновим экран (U0..U9)
-			}
-			else {
-				// Обычное поведение UP/DOWN
-				MAIN_Key_UP_DOWN(bKeyPressed, bKeyHeld, (Key == KEY_UP) ? 1 : -1);
-			}
-			gWasFKeyPressed = false;  // сбрасываем F в любом случае
-			break;
-		//END UP/DOWN
+			//КНОПКИ ВВЕРХ ВНИЗ SQL   
+case KEY_UP:
+case KEY_DOWN:
+    if (gWasFKeyPressed && bKeyPressed && !bKeyHeld)
+    {
+        // F + UP/DOWN — мгновенная смена SQL 0-9
+        if (Key == KEY_UP)
+        {
+            if (gEeprom.SQUELCH_LEVEL < 9)
+                gEeprom.SQUELCH_LEVEL++;
+        }
+        else
+        {
+            if (Key == KEY_DOWN && gEeprom.SQUELCH_LEVEL > 0)
+                gEeprom.SQUELCH_LEVEL--;
+        }
+
+        gRequestSaveSettings = true;
+        gUpdateDisplay = true;
+
+        RADIO_ConfigureSquelchAndOutputPower(gTxVfo);
+        RADIO_ApplySquelch();
+    }
+    else
+    {
+        // Обычное переключение каналов/частот — ВОТ ТУТ ВЫЗЫВАЕМ ТВОЮ ФУНКЦИЮ!
+        MAIN_Key_UP_DOWN(bKeyPressed, bKeyHeld, (Key == KEY_UP) ? 1 : -1);
+    }
+    gWasFKeyPressed = false;
+    break;
+			//END UP/DOWN
 
 		case KEY_EXIT:
 			MAIN_Key_EXIT(bKeyPressed, bKeyHeld);
