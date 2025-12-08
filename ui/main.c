@@ -64,14 +64,8 @@ void DrawLevelBar(uint8_t xpos, uint8_t line, uint8_t level)
 	level = MIN(level, 13);
 
 	for(uint8_t i = 0; i < level; i++) {
-		if(i < 9) {
-			for(uint8_t j = 0; j < 4; j++)
-				p_line[xpos + i * 5 + j] = (~(0x7F >> (i+1))) & 0x7F;
+		memcpy(p_line + (xpos + i * 5), &hollowBar, ARRAY_SIZE(hollowBar));
 		}
-		else {
-			memcpy(p_line + (xpos + i * 5), &hollowBar, ARRAY_SIZE(hollowBar));
-		}
-	}
 //	ST7565_BlitFullScreen();
 }
 
@@ -96,19 +90,12 @@ unsigned int sqrt16(unsigned int value)
 
 void UI_DisplayAudioBar(void)
 {
-	if(gLowBattery && !gLowBatteryConfirmed)
-		return;
+	if(gLowBattery && !gLowBatteryConfirmed) return;
 
-	if (gCurrentFunction != FUNCTION_TRANSMIT ||
-		gScreenToDisplay != DISPLAY_MAIN
-		)
-	{
-		return;  // screen is in use
-	}
+	if (gCurrentFunction != FUNCTION_TRANSMIT || gScreenToDisplay != DISPLAY_MAIN) {return;}
 			
 	#if defined(ENABLE_TX1750)
-		if (gAlarmState != ALARM_STATE_OFF)
-			return;
+		if (gAlarmState != ALARM_STATE_OFF)	return;
 	#endif
 	const unsigned int voice_amp  = BK4819_GetVoiceAmplitudeOut();  // 15:0
 
@@ -117,7 +104,6 @@ void UI_DisplayAudioBar(void)
 	const unsigned int sqrt_level = MIN(sqrt16(level), 124u);
 	uint8_t bars = 13 * sqrt_level / 124;
 	DrawLevelBar(62, 1, bars);
-	
 }
 #endif
 
