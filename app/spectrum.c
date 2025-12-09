@@ -73,15 +73,17 @@ uint32_t gScanRangeStop = 13000000;   // case 5
 //Modulation                          // case 8      
 //ClearSettings                       // case 9      
 bool Backlight_On_Rx = 0;             // case 10        
-static bool gCounthistory = 1;               // case 11      
+static bool gCounthistory = 1;        // case 11      
 //ClearHistory                        // case 12      
 //RAM                                 // case 13     
 uint16_t SpectrumSleepMs = 0;         // case 14
 uint8_t Noislvl_OFF = 60;             // case 15
-uint8_t Noislvl_ON = 50;              // case 16
-uint16_t Tx_Dev = 13520;              // case 17
-uint16_t Rx_Dev = 13520;              // case 18
-#define PARAMETER_COUNT 19
+uint8_t Noislvl_ON = 50;              // case 15
+//uint16_t Tx_Dev = 13520;              // case 16
+//uint16_t Rx_Dev = 13520;              // case 17
+uint16_t UOO_trigger = 15;            // case 16
+
+#define PARAMETER_COUNT 17
 ////////////////////////////////////////////////////////////////////
 
 static uint32_t Fmax = 0;
@@ -887,11 +889,13 @@ static void ToggleRX(bool on) {
     if (on) { 
         BK4819_SetFilterBandwidth(settings.listenBw, false);
         BK4819_WriteRegister(BK4819_REG_3F, BK4819_REG_02_CxCSS_TAIL);
+       // BK4819_WriteRegister(BK4819_REG_40, Rx_Dev|0x3000);
 
     } else { 
         BK4819_SetFilterBandwidth(BK4819_FILTER_BW_WIDE, false); //Scan in 25K bandwidth
         if(appMode!=CHANNEL_MODE) BK4819_WriteRegister(0x43, GetBWRegValueForScan());
         BK4819_ToggleGpioOut(BK4819_GPIO6_PIN2_GREEN, 0);
+        //BK4819_WriteRegister(BK4819_REG_40, Tx_Dev|0x3000);
     }
 
     ToggleAudio(on);
@@ -1005,7 +1009,7 @@ static void Measure() {
         gIsPeak      = false;
         isFirst      = false;
     }
-    if (settings.rssiTriggerLevelUp == 50 && rssi > previousRssi + 15) {
+    if (settings.rssiTriggerLevelUp == 50 && rssi > previousRssi + UOO_trigger) {
       peak.f = scanInfo.f;
       peak.i = scanInfo.i;
       FillfreqHistory();
@@ -1984,23 +1988,25 @@ static void OnKeyDown(uint8_t key) {
                       break;
                   case 15: // Noislvl_OFF
                       Noislvl_OFF = isKey3 ? 
-                                 (Noislvl_OFF >= 100 ? 0 : Noislvl_OFF + 1) :
-                                 (Noislvl_OFF <= 0 ? 100 : Noislvl_OFF - 1);
+                                 (Noislvl_OFF >= 100 ? 30 : Noislvl_OFF + 1) :
+                                 (Noislvl_OFF <= 30 ? 100 : Noislvl_OFF - 1);
+                      Noislvl_ON = Noislvl_OFF - 10;                      
                       break;
-                  case 16: // Noislvl_ON
-                      Noislvl_ON = isKey3 ? 
-                                 (Noislvl_ON >= 100 ? 0 : Noislvl_ON + 1) :
-                                 (Noislvl_ON <= 0 ? 100 : Noislvl_ON - 1);
-                      break;
-                  case 17: // Tx_Dev
+/*                   case 16: // Tx_Dev
                       Tx_Dev = isKey3 ? 
                                  (Tx_Dev >= 4095 ? 0 : Tx_Dev + 1) :
                                  (Tx_Dev <= 0 ? 4095 : Tx_Dev - 1);
                       break;
-                  case 18: // Rx_Dev
+                  case 17: // Rx_Dev
                       Rx_Dev = isKey3 ? 
                                  (Rx_Dev >= 4095 ? 0 : Rx_Dev + 1) :
                                  (Rx_Dev <= 0 ? 4095 : Rx_Dev - 1);
+                      break; */
+                  
+                  case 16: // UOO_trigger
+                      UOO_trigger = isKey3 ? 
+                                 (UOO_trigger >= 50 ? 0 : UOO_trigger + 1) :
+                                 (UOO_trigger <= 0 ? 50 : UOO_trigger - 1);
                       break;
                   
               }
@@ -2918,7 +2924,7 @@ typedef struct {
     uint8_t IndexMaxLT;
     uint8_t IndexPS;
     uint8_t Noislvl_OFF;
-    uint8_t Noislvl_ON; 
+    uint16_t UOO_trigger;
     bool Backlight_On_Rx;
 } SettingsEEPROM;
 
@@ -2959,7 +2965,8 @@ static void LoadSettings()
   IndexPS = eepromData.IndexPS;
   SpectrumSleepMs = PS_Steps[IndexPS];
   Noislvl_OFF = eepromData.Noislvl_OFF;
-  Noislvl_ON  = eepromData.Noislvl_ON; 
+  Noislvl_ON  = Noislvl_OFF-10; 
+  UOO_trigger = eepromData.UOO_trigger;
   Backlight_On_Rx = eepromData.Backlight_On_Rx;
   ChannelAttributes_t att;
   for (int i = 0; i < MR_CHANNEL_LAST+1; i++) {
@@ -3002,7 +3009,7 @@ static void SaveSettings()
   eepromData.IndexPS = IndexPS;
   eepromData.Backlight_On_Rx = Backlight_On_Rx;
   eepromData.Noislvl_OFF = Noislvl_OFF;
-  eepromData.Noislvl_ON  = Noislvl_ON ;
+  eepromData.UOO_trigger = UOO_trigger;
   
   for (int i = 0; i < 32; i++) { 
       eepromData.BPRssiTriggerLevelUp[i] = BPRssiTriggerLevelUp[i];
@@ -3072,6 +3079,7 @@ static void ClearSettings()
   Backlight_On_Rx = 0;
   Noislvl_OFF = 60; 
   Noislvl_ON = 50;  
+  UOO_trigger = 15;
   for (int i = 0; i < 32; i++) { 
       BPRssiTriggerLevelUp[i] = 5;
       settings.bandEnabled[i] = 0;
@@ -3221,16 +3229,15 @@ static void GetParametersText(uint8_t index, char *buffer) {
         case 15:
             sprintf(buffer, "Noislvl_OFF: %d", Noislvl_OFF);
             break;
-        case 16:
-            sprintf(buffer, "Noislvl_ON: %d", Noislvl_ON);
-            break;
-        case 17:
+/*         case 16:
             sprintf(buffer, "Tx_Dev: %d", Tx_Dev);
             break;
-        case 18:
+        case 17:
             sprintf(buffer, "Rx_Dev: %d", Rx_Dev);
+            break; */
+        case 16:
+            sprintf(buffer, "UOO_trigger: %d", UOO_trigger);
             break;
-
         default:
             // Gestion d'un index inattendu (optionnel)
             buffer[0] = '\0';

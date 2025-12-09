@@ -53,10 +53,10 @@ static void DrawSmallAntennaAndBars(uint8_t *p, unsigned int level)
 void DrawLevelBar(uint8_t xpos, uint8_t line, uint8_t level)
 {
 	const char hollowBar[] = {
-		0b00111110,
-		0b01000001,
-		0b01000001,
-		0b00111110
+		0b01111111,
+		0b01111111,
+		0b01111111,
+		0b01111111
 	};
 
 	uint8_t *p_line = gFrameBuffer[line];
