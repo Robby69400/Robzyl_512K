@@ -235,6 +235,7 @@ const RegisterSpec allRegisterSpecs[] = {
     {"XTAL F Mode Select", 0x3C, 6, 0b11, 1},
     {"OFF AF Rx de-emp", 0x2B, 8, 1, 1},
     {"Gain after FM Demod", 0x43, 2, 1, 1},
+    {"RF Tx Deviation", 0x40, 0, 0xFFF, 10},
     {"Compress AF Tx Ratio", 0x29, 14, 0b11, 1},
     {"Compress AF Tx 0 dB", 0x29, 7, 0x7F, 1},
     {"Compress AF Tx noise", 0x29, 0, 0x7F, 1},
