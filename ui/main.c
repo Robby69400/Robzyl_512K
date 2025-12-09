@@ -60,7 +60,7 @@ void DrawLevelBar(uint8_t xpos, uint8_t line, uint8_t level)
 	};
 
 	uint8_t *p_line = gFrameBuffer[line];
-	//memset(p_line, 0, LCD_WIDTH);
+	memset(p_line, 0, LCD_WIDTH);
 	level = MIN(level, 13);
 
 	for(uint8_t i = 0; i < level; i++) {

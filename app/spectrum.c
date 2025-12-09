@@ -52,7 +52,7 @@ static volatile bool gSpectrumChangeRequested = false;
 static volatile uint8_t gRequestedSpectrumState = 0;
 
 
-#define HISTORY_SIZE 100
+#define HISTORY_SIZE 30
 
 static uint32_t    HFreqs[HISTORY_SIZE];
 static uint8_t     HCount[HISTORY_SIZE];
@@ -73,14 +73,15 @@ uint32_t gScanRangeStop = 13000000;   // case 5
 //Modulation                          // case 8      
 //ClearSettings                       // case 9      
 bool Backlight_On_Rx = 0;             // case 10        
-bool gCounthistory = 1;               // case 11      
+static bool gCounthistory = 1;               // case 11      
 //ClearHistory                        // case 12      
 //RAM                                 // case 13     
 uint16_t SpectrumSleepMs = 0;         // case 14
 uint8_t Noislvl_OFF = 60;             // case 15
 uint8_t Noislvl_ON = 50;              // case 16
-
-#define PARAMETER_COUNT 17
+uint16_t Tx_Dev = 13520;              // case 17
+uint16_t Rx_Dev = 13520;              // case 18
+#define PARAMETER_COUNT 19
 ////////////////////////////////////////////////////////////////////
 
 static uint32_t Fmax = 0;
@@ -111,7 +112,7 @@ uint16_t WaitSpectrum = 0;
 uint32_t Last_Tuned_Freq = 44610000;
 #define SQUELCH_OFF_DELAY 10;
 bool StorePtt_Toggle_Mode = 0;
-uint8_t historyListIndex = 0;
+static uint8_t historyListIndex = 0;
 uint8_t ArrowLine = 1;
 static int historyScrollOffset = 0;
 static void LoadValidMemoryChannels(void);
@@ -173,7 +174,7 @@ uint8_t bl;
 uint8_t CurrentScanBand = 1;
 State currentState = SPECTRUM, previousState = SPECTRUM;
 uint8_t Spectrum_state; 
-PeakInfo peak;
+static PeakInfo peak;
 ScanInfo scanInfo;
 char     latestScanListName[12];
 const char *bwOptions[] = {"  25k", "12.5k", "6.25k"};
@@ -234,8 +235,6 @@ const RegisterSpec allRegisterSpecs[] = {
     {"XTAL F Mode Select", 0x3C, 6, 0b11, 1},
     {"OFF AF Rx de-emp", 0x2B, 8, 1, 1},
     {"Gain after FM Demod", 0x43, 2, 1, 1},
-    //Saved values
-    {"RF Tx Deviation", 0x40, 0, 0xFFF, 10},
     {"Compress AF Tx Ratio", 0x29, 14, 0b11, 1},
     {"Compress AF Tx 0 dB", 0x29, 7, 0x7F, 1},
     {"Compress AF Tx noise", 0x29, 0, 0x7F, 1},
@@ -821,7 +820,7 @@ static void ToggleAudio(bool on) {
   }
 }
 
-void FillfreqHistory(void)
+static void FillfreqHistory(void)
 {
     uint32_t f = peak.f;
     if (f < 1400000 || f > 130000000) return;
@@ -1370,13 +1369,7 @@ switch(SpectrumMonitor) {
       len = sprintf(&String[pos],"A%+d ", afc);
       pos += len;
   }
-
-  /* if (WaitSpectrum > 0 && WaitSpectrum <61000){len = sprintf(&String[pos],"%d ", WaitSpectrum/1000);pos += len;}
-  else if(WaitSpectrum > 61000){len = sprintf(&String[pos],"oo");pos += len;} //locked
-  
-  if (spectrumElapsedCount > 0 ){len = sprintf(&String[pos],"%d ", spectrumElapsedCount/100);pos += len;} */
-  
-  
+  GUI_DisplaySmallest(String, 0, 1, true,true);
   BOARD_ADC_GetBatteryInfo(&gBatteryVoltages[gBatteryCheckCounter++ % 4]);
 
   uint16_t voltage = (gBatteryVoltages[0] + gBatteryVoltages[1] + gBatteryVoltages[2] +
@@ -1384,20 +1377,8 @@ switch(SpectrumMonitor) {
             4 * 760 / gBatteryCalibration[3];
 
   unsigned perc = BATTERY_VoltsToPercent(voltage);
-  len = sprintf(&String[pos],"%d%%", perc);
-  //pos += len;
-  GUI_DisplaySmallest(String, 0, 1, true,true);
-/*   gStatusLine[116] = 0b00011100;
-  gStatusLine[117] = 0b00111110;
-  for (int i = 118; i <= 126; i++) {gStatusLine[i] = 0b00100010;}
-  
-  for (unsigned i = 127; i >= 118; i--) {
-    if (127 - i <= (perc+5)*9/100) {
-      gStatusLine[i] = 0b00111110;
-    }
-  } */
-  
-
+  sprintf(String,"%d%%", perc);
+  GUI_DisplaySmallest(String, 112, 1, true,true);
 }
 
 static void formatHistory(char *buf, uint16_t Channel, uint32_t freq) {
@@ -2010,6 +1991,17 @@ static void OnKeyDown(uint8_t key) {
                                  (Noislvl_ON >= 100 ? 0 : Noislvl_ON + 1) :
                                  (Noislvl_ON <= 0 ? 100 : Noislvl_ON - 1);
                       break;
+                  case 17: // Tx_Dev
+                      Tx_Dev = isKey3 ? 
+                                 (Tx_Dev >= 4095 ? 0 : Tx_Dev + 1) :
+                                 (Tx_Dev <= 0 ? 4095 : Tx_Dev - 1);
+                      break;
+                  case 18: // Rx_Dev
+                      Rx_Dev = isKey3 ? 
+                                 (Rx_Dev >= 4095 ? 0 : Rx_Dev + 1) :
+                                 (Rx_Dev <= 0 ? 4095 : Rx_Dev - 1);
+                      break;
+                  
               }
             
 
@@ -3230,6 +3222,12 @@ static void GetParametersText(uint8_t index, char *buffer) {
             break;
         case 16:
             sprintf(buffer, "Noislvl_ON: %d", Noislvl_ON);
+            break;
+        case 17:
+            sprintf(buffer, "Tx_Dev: %d", Tx_Dev);
+            break;
+        case 18:
+            sprintf(buffer, "Rx_Dev: %d", Rx_Dev);
             break;
 
         default:
