@@ -79,8 +79,6 @@ static bool gCounthistory = 1;        // case 11
 uint16_t SpectrumSleepMs = 0;         // case 14
 uint8_t Noislvl_OFF = 60;             // case 15
 uint8_t Noislvl_ON = 50;              // case 15
-//uint16_t Tx_Dev = 13520;              // case 16
-//uint16_t Rx_Dev = 13520;              // case 17
 uint16_t UOO_trigger = 15;            // case 16
 
 #define PARAMETER_COUNT 17
@@ -622,7 +620,7 @@ static void SaveHistoryToFreeChannel(void) {
     char str[32];
 
     // --- ÉTAPE 1 : VÉRIFIER SI LA FRÉQUENCE EXISTE DÉJÀ ---
-    for (int i = 0; i < 200; i++) {
+    for (int i = 0; i < MR_CHANNEL_LAST; i++) {
         uint32_t freqInMem;
         // Lecture des 4 premiers octets du canal (la fréquence)
         EEPROM_ReadBuffer(ADRESS_FREQ_PARAMS + (i * 16), (uint8_t *)&freqInMem, 4);
@@ -638,7 +636,7 @@ static void SaveHistoryToFreeChannel(void) {
 
     // --- ÉTAPE 2 : CHERCHER UN EMPLACEMENT LIBRE ---
     int freeCh = -1;
-    for (int i = 0; i < 200; i++) {
+    for (int i = 0; i < MR_CHANNEL_LAST; i++) {
         uint8_t checkByte;
         // On vérifie juste le premier octet pour voir si le slot est libre
         EEPROM_ReadBuffer(ADRESS_FREQ_PARAMS + (i * 16), &checkByte, 1);
@@ -749,14 +747,14 @@ if (historyListActive == true){
       if (PttEmission ==1){
           uint16_t randomChannel = GetRandomChannelFromRSSI(scanChannelsCount);
           static uint32_t rndfreq;
-          uint8_t i = 0;
+          uint16_t i = 0;
           SpectrumDelay = 0; //not compatible with ninja
 
           while (rssiHistory[randomChannel]> 120) //check chanel availability
             {i++;
             randomChannel++;
             if (randomChannel >scanChannelsCount)randomChannel = 1;
-            if (i>200) break;}
+            if (i > MR_CHANNEL_LAST) break;}
           rndfreq = gMR_ChannelFrequencyAttributes[scanChannel[randomChannel]].Frequency;
           SETTINGS_SetVfoFrequency(rndfreq);
           gEeprom.MrChannel     = scanChannel[randomChannel];
@@ -883,19 +881,18 @@ static void ToggleRX(bool on) {
             if (!gForceModulation) settings.modulationType = BParams[bl].modulationType;
             RADIO_SetModulation(BParams[bl].modulationType);
             BK4819_InitAGC(settings.modulationType);
-            
           }
     
     if (on) { 
         BK4819_SetFilterBandwidth(settings.listenBw, false);
         BK4819_WriteRegister(BK4819_REG_3F, BK4819_REG_02_CxCSS_TAIL);
-       // BK4819_WriteRegister(BK4819_REG_40, Rx_Dev|0x3000);
 
     } else { 
         BK4819_SetFilterBandwidth(BK4819_FILTER_BW_WIDE, false); //Scan in 25K bandwidth
         if(appMode!=CHANNEL_MODE) BK4819_WriteRegister(0x43, GetBWRegValueForScan());
         BK4819_ToggleGpioOut(BK4819_GPIO6_PIN2_GREEN, 0);
-        //BK4819_WriteRegister(BK4819_REG_40, Tx_Dev|0x3000);
+        RADIO_SetModulation(MODULATION_FM);
+        BK4819_InitAGC(MODULATION_FM);
     }
 
     ToggleAudio(on);
@@ -1992,17 +1989,6 @@ static void OnKeyDown(uint8_t key) {
                                  (Noislvl_OFF <= 30 ? 100 : Noislvl_OFF - 1);
                       Noislvl_ON = Noislvl_OFF - 10;                      
                       break;
-/*                   case 16: // Tx_Dev
-                      Tx_Dev = isKey3 ? 
-                                 (Tx_Dev >= 4095 ? 0 : Tx_Dev + 1) :
-                                 (Tx_Dev <= 0 ? 4095 : Tx_Dev - 1);
-                      break;
-                  case 17: // Rx_Dev
-                      Rx_Dev = isKey3 ? 
-                                 (Rx_Dev >= 4095 ? 0 : Rx_Dev + 1) :
-                                 (Rx_Dev <= 0 ? 4095 : Rx_Dev - 1);
-                      break; */
-                  
                   case 16: // UOO_trigger
                       UOO_trigger = isKey3 ? 
                                  (UOO_trigger >= 50 ? 0 : UOO_trigger + 1) :
@@ -3229,12 +3215,6 @@ static void GetParametersText(uint8_t index, char *buffer) {
         case 15:
             sprintf(buffer, "Noislvl_OFF: %d", Noislvl_OFF);
             break;
-/*         case 16:
-            sprintf(buffer, "Tx_Dev: %d", Tx_Dev);
-            break;
-        case 17:
-            sprintf(buffer, "Rx_Dev: %d", Rx_Dev);
-            break; */
         case 16:
             sprintf(buffer, "UOO_trigger: %d", UOO_trigger);
             break;

@@ -460,28 +460,22 @@ void UI_DisplayMenu(void)
 				break;
 			case MENU_MEM_CH:
 			case MENU_DEL_CH:
-			{
 				UI_GenerateChannelStringEx(String, 1, gSubMenuSelection);
 				UI_PrintString(String, menu_item_x1, menu_item_x2, 0, 8);
-
 				SETTINGS_FetchChannelName(String, gSubMenuSelection);
-				if (String[0] == 0)
-					strcpy(String, "--");
+				if (String[0] == 0)	strcpy(String, "----");
 				UI_PrintString(String, menu_item_x1, menu_item_x2, 2, 8);
-
 				if (!gAskForConfirmation)
 				{	// show the frequency so that the user knows the Channels frequency
 					const uint32_t frequency = BOARD_fetchChannelFrequency(gSubMenuSelection);
-					sprintf(String, "%u.%05u", frequency / 100000, frequency % 100000);
+					if (frequency == 0) {strcpy(String, "----");}
+                    else sprintf(String, "%u.%05u", frequency / 100000, frequency % 100000);
 					UI_PrintString(String, menu_item_x1, menu_item_x2, 4, 8);
 				}
-
 				already_printed = true;
 				break;
-			}
 
 			case MENU_MEM_NAME:
-			{
 				UI_GenerateChannelStringEx(String, 1, gSubMenuSelection);
 				UI_PrintString(String, menu_item_x1, menu_item_x2, 0, 8);
 
@@ -504,7 +498,8 @@ void UI_DisplayMenu(void)
 
 				if (!gAskForConfirmation)
 				{	// show the frequency so that the user knows the Channels frequency
-					sprintf(String, "%u.%05u", frequency / 100000, frequency % 100000);
+					if (frequency == 0xFFFFFFFF) {strcpy(String, "Empty");}
+					else sprintf(String, "%u.%05u", frequency / 100000, frequency % 100000);
 					if (!gIsInSubMenu || edit_index < 0)
 						UI_PrintString(String, menu_item_x1, menu_item_x2, 4, 8);
 					else
@@ -513,7 +508,6 @@ void UI_DisplayMenu(void)
 
 				already_printed = true;
 				break;
-			}
 
 			case MENU_SAVE:
 				strcpy(String, gSubMenu_SAVE[gSubMenuSelection]);
