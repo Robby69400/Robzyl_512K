@@ -202,3 +202,23 @@ const uint8_t BITMAP_compand[6] =
 	0b00100100
 };
 
+/* NOWA: szeroka ikona stereo (dwa kanały) - 12 kolumn
+   Zaprojektowana jako dwie stylizowane "D" / ramki obok siebie,
+   przypominająca symbol dwóch kanałów (dolby-like).
+   Szerokość: 12 kolumn, wysokość: 8 bitów (zgodnie z innymi ikonami).
+*/
+const uint8_t BITMAP_STEREO_BIG[12] =
+{
+	0b00000000, // kol 0
+	0b01111110, // kol 1 - lewa ramka górna
+	0b00100100, // kol 2
+	0b00011000, // kol 3
+	0b00111100, // kol 4 - lewa ramka dolna
+	0b00000000, // kol 5 - przerwa
+	0b00111100, // kol 6 - prawa ramka górna
+	0b00011000, // kol 7
+	0b00100100, // kol 8
+	0b01111110, // kol 9
+	0b00000000, // kol 10 - prawa ramka dolna
+	0b00000000  // kol 11 - przerwa
+};

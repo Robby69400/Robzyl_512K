@@ -34,6 +34,8 @@ extern const uint8_t BITMAP_ScanList1[6];
 extern const uint8_t BITMAP_ScanList2[6];
 
 extern const uint8_t BITMAP_compand[6];
+/* nowa: szeroka ikona stereo (dwa kanały) - 12 kolumn */
+extern const uint8_t BITMAP_STEREO_BIG[12];
 
 #endif
 

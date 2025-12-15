@@ -1,5 +1,5 @@
 AUTHOR_STRING := ""
-VERSION_STRING := V5.5.25
+VERSION_STRING := V5.5.25.1
 
 # compile options (see README.md for descriptions)
 # 0 = disable
@@ -42,7 +42,7 @@ ENABLE_IN_BAND							:= 0
 ENABLE_SCREENSHOT		  				:= 0
 ENABLE_SCANLIST_SHOW_DETAIL		   		:= 1
 ENABLE_EEPROM_512K				   		:= 0
-ENABLE_4732								:= 0
+ENABLE_4732								:= 1
 
 
 
@@ -110,6 +110,7 @@ OBJS += app/app.o
 OBJS += app/common.o
 ifeq ($(ENABLE_FMRADIO),1)
 	OBJS += app/fm.o
+	OBJS += helper/rds.o
 endif
 OBJS += app/generic.o
 OBJS += app/main.o
