@@ -63,6 +63,15 @@
 
 #include "driver/eeprom.h"
 
+//--start-si
+#include "driver/si473x.h"
+#include "helper/rds.h"
+
+// GLOBAL (static w pliku) licznik 10ms dla zegara RDS
+static uint16_t gRdsTick10ms = 0;
+
+//--end-si
+
 bool gCurrentTxState = false;
 
 static void ProcessKey(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld);
@@ -745,6 +754,55 @@ void APP_TimeSlice10ms(void)
 
 
 	FlashlightTimeSlice();
+	
+	//--start-si
+			// --- Pollowanie RDS co ~100ms (tylko dla SI4732 i gdy FM jest włączone) ---
+	#if defined ENABLE_4732
+	static uint8_t rds_poll_counter = 0;
+	if (gFmRadioMode) {
+		if (++rds_poll_counter >= 20) { // 10 * 10ms = 100ms
+			rds_poll_counter = 0;
+			// Odczytaj pakiety RDS (jeśli są) i zaktualizuj strukturę rds.
+			// SI47XX_GetRDS() ustawi gUpdateDisplay jeśli pojawią się nowe dane.
+			SI47XX_GetRDS();
+		}
+		FM_CheckScan();
+		//FM_UpdateSignalStrength();
+	}
+	#endif
+	
+	
+	
+	// Skipping authentic device checks
+
+/* 		if (gFmRadioMode && gFmRadioCountdown_500ms > 0)   // 1of11
+			return;
+ */
+ // Aktualizacja zegara RDS (jeśli mamy ważny czas)
+    if (gRdsTimeValid)
+    {
+        if (++gRdsTick10ms >= 100) // 100 * 10ms = 1000ms = 1 sekunda
+        {
+            gRdsTick10ms = 0;
+            // inkrementuj sekundy
+            if (++gRdsLocalTime.second >= 60)
+            {
+                gRdsLocalTime.second = 0;
+                if (++gRdsLocalTime.minute >= 60)
+                {
+                    gRdsLocalTime.minute = 0;
+                    if (++gRdsLocalTime.hour >= 24)
+                        gRdsLocalTime.hour = 0;
+                }
+            }
+            // odśwież status line co sekundę
+           // gUpdateStatus = true;
+        }
+    }
+ 
+ 
+
+	//--end-si
 
 	if (gFmRadioMode && gFM_RestoreCountdown_10ms > 0)
 	{
@@ -964,6 +1022,17 @@ void APP_TimeSlice500ms(void)
 
 	BATTERY_TimeSlice500ms();
 	SCANNER_TimeSlice500ms();
+	
+	//
+				// Handle FM radio tasks
+	if (gFmRadioMode)
+	{
+		FM_CheckScan();
+		FM_UpdateSignalStrength();
+	
+	}
+
+	//
 
 }
 
