@@ -1,9 +1,7 @@
 /* Original work Copyright 2023 Dual Tachyon
  * https://github.com/DualTachyon
  *
- * Modified work Copyright 2024 kamilsss655
- * https://github.com/kamilsss655
- *
+ * Modified work Copyright 2025 zylka
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -45,7 +43,7 @@ typedef enum {
 
 
 uint16_t          lowBatteryCountdown;
-const uint16_t 	  lowBatteryPeriod = 30;
+const uint16_t   	lowBatteryPeriod = 30;
 
 volatile uint16_t gPowerSave_10ms;
 
@@ -77,7 +75,7 @@ unsigned int BATTERY_VoltsToPercent(const unsigned int voltage_10mV)
 	if (type == BATTERY_TYPE_2200_MAH) {
 		crv = crv2200;
 		size = ARRAY_SIZE(crv2200);
-	}	
+	} 	
 	else {
 		crv = crv1600;
 		size = ARRAY_SIZE(crv1600);
@@ -103,7 +101,17 @@ void BATTERY_GetReadings()
 
 	
 
-	gBatteryVoltageAverage = (Voltage * 760) / gBatteryCalibration[3];
+	/* Validate calibration read from EEPROM.
+	   EEPROM may contain invalid values (e.g. after EEPROM replacement or software change).
+	   Acceptable range: 1900..2050. Otherwise use default 1999 to avoid blocking radio due to bad voltage calculation.
+	*/
+	uint16_t calib = gBatteryCalibration[3];
+	if (calib < 1900 || calib > 2050)
+	{
+		calib = 1999;
+	}
+
+	gBatteryVoltageAverage = (Voltage * 760) / calib;
 
 	if(gBatteryVoltageAverage > 890)
 		gBatteryDisplayLevel = 7; // battery overvoltage
@@ -156,7 +164,7 @@ void BATTERY_TimeSlice500ms(void)
 		//UI_DisplayBattery(0, gLowBatteryBlink);
 
 		if (gCurrentFunction != FUNCTION_TRANSMIT)
-		{	// not transmitting
+		{ 	// not transmitting
 
 			if (lowBatteryCountdown > lowBatteryPeriod)
 			{
