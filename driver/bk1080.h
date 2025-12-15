@@ -39,5 +39,8 @@ void BK1080_GetFrequencyDeviation(uint16_t Frequency);
 void BK1080_TuneNext(bool direction);
 uint16_t BK1080_GetFrequency();
 
+/* Dodano: zwraca surową wartość RSSI (zakres zależny od rejestru BK1080) */
+uint8_t BK1080_GetRSSI(void);
+
 #endif
 

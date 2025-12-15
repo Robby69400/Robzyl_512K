@@ -23,8 +23,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-void EEPROM_ReadBuffer(uint16_t Address, void *pBuffer, uint16_t Size);
-void EEPROM_WriteBuffer(uint16_t Address, const void *pBuffer);
+// Zmiana uint16_t na uint32_t dla adresu, aby obsłużyć pamięci > 64KB
+void EEPROM_ReadBuffer(uint32_t Address, void *pBuffer, uint16_t Size);
+void EEPROM_WriteBuffer(uint32_t Address, const void *pBuffer);
 
 #endif
-

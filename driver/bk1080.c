@@ -168,3 +168,20 @@ uint16_t BK1080_GetFrequency()
 // 	BK1080_BaseFrequency      = Frequency;
 // 	BK1080_FrequencyDeviation = BK1080_ReadRegister(BK1080_REG_07) / 16;
 // }
+
+uint8_t BK1080_GetRSSI(void)
+{
+	/* UWAGA:
+	 * BK1080 ma różne rejestry metryk RF. Jeśli masz plik bk1080-regs.h, sprawdź
+	 * który rejestr zawiera RSSI/AF/AGC. W tym repo był komentarz wykorzystujący
+	 * BK1080_REG_07 w kontekście odchylenia częstotliwości, więc tu użyłem
+	 * BK1080_REG_07 jako przykład. Dostosuj jeśli znasz prawidłowy rejestr.
+	 */
+	uint16_t reg = BK1080_ReadRegister(BK1080_REG_07);
+
+	/* Przyjmujemy, że surowa wartość mieści się w starszym bajcie lub w
+	   niższych bitach — to wymaga sprawdzenia. Tutaj zwracamy starszy bajt jako
+	   "raw" (0..255). Jeśli wiemy, że zakres to 0..63, dokonaj maskowania. */
+	uint8_t raw = (reg >> 8) & 0xFF;
+	return raw;
+}
