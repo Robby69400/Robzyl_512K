@@ -393,3 +393,109 @@ void UI_PrintStringSmallScrolling(const char *pString, uint8_t Start, uint8_t En
     }
 }
 #endif
+
+
+/***********ИНВЕРСИЯ МЕЛКОГО ТЕКСТА**********INVERSION FONT SMALL**********************************/
+// wide_spacing = true: 6 px
+// wide_spacing = false: 4 px
+void GUI_DisplaySmallestDark(const char *pString, uint8_t x, uint8_t y, bool statusbar, bool wide_spacing)
+{
+    if (!pString || !*pString) return;
+
+    const uint8_t char_height = 6;
+    const uint8_t char_width = wide_spacing ? 6 : 4;
+
+    uint8_t base_x = x;
+    uint8_t end_x = x;
+
+    uint8_t c;
+    const uint8_t *p = (const uint8_t *)pString;
+
+    while ((c = *p++) != '\0')
+    {
+        if (c < 0x20) {
+            end_x += char_width;
+            continue;
+        }
+
+        c -= 0x20;
+
+        // Линия сверху 
+        if (y > 0)
+        {
+            for (uint8_t dx = 0; dx < char_width; dx++)
+            {
+                if (statusbar)
+                    PutPixelStatus(end_x + dx, y - 1, true);
+                else
+                    PutPixel(end_x + dx, y - 1, true);
+            }
+        }
+
+        // Чёрный фон
+        for (uint8_t dy = 0; dy < char_height; dy++)
+        {
+            for (uint8_t dx = 0; dx < char_width; dx++)
+            {
+                if (statusbar)
+                    PutPixelStatus(end_x + dx, y + dy, true);
+                else
+                    PutPixel(end_x + dx, y + dy, true);
+            }
+        }
+
+        // Белые буквы
+        const uint8_t *glyph = gFont3x5[c];
+        for (uint8_t col = 0; col < 3; col++)
+        {
+            uint8_t pixels = glyph[col];
+            for (uint8_t row = 0; row < 6; row++)
+            {
+                if (pixels & 1)
+                {
+                    uint8_t offset = wide_spacing ? 1 : 0;
+                    if (statusbar)
+                        PutPixelStatus(end_x + col + offset, y + row, false);
+                    else
+                        PutPixel(end_x + col + offset, y + row, false);
+                }
+                pixels >>= 1;
+            }
+        }
+
+        end_x += char_width;
+    }
+
+    // Вертикальные линии — в обоих режимах две слева, одна справа
+    for (uint8_t dy = 0; dy <= char_height; dy++)
+    {
+        uint8_t line_y = y + dy - 1;
+        if (line_y < 64)
+        {
+            // Две линии слева
+            if (base_x >= 2)
+            {
+                if (statusbar)
+                    PutPixelStatus(base_x - 2, line_y, true);
+                else
+                    PutPixel(base_x - 2, line_y, true);
+            }
+            if (base_x >= 1)
+            {
+                if (statusbar)
+                    PutPixelStatus(base_x - 1, line_y, true);
+                else
+                    PutPixel(base_x - 1, line_y, true);
+            }
+
+            // Линия справа
+            if (end_x < 128)
+            {
+                if (statusbar)
+                    PutPixelStatus(end_x, line_y, true);
+                else
+                    PutPixel(end_x, line_y, true);
+            }
+        }
+    }
+}

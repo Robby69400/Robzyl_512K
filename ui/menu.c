@@ -312,10 +312,14 @@ void UI_DisplayMenu(void)
 				i++;
 			}
 
-			// draw the menu index number/count
+			// draw the menu index number/count НОМЕРА ПУНКТОВ
 			sprintf(String, "%2u.%u", 1 + gMenuCursor, gMenuListCount);
 			UI_PrintStringSmall(String, 2, 0, 6,0);
 		}
+
+
+
+		
 		else
 		if (menu_index >= 0 && menu_index < (int)gMenuListCount)
 		{	// current menu item
@@ -622,18 +626,28 @@ void UI_DisplayMenu(void)
 	if ((UI_MENU_GetCurrentMenuId() == MENU_R_CTCS || UI_MENU_GetCurrentMenuId() == MENU_R_DCS) && gCssBackgroundScan)
 		UI_PrintString("SCAN", menu_item_x1, menu_item_x2, 4, 8);
 
-
+//****************************МЕЛКИЕ ПОКАЗАТЕЛИ ВЕРХ***************** */
 	if (UI_MENU_GetCurrentMenuId() == MENU_R_CTCS ||
-	    UI_MENU_GetCurrentMenuId() == MENU_T_CTCS ||
-	    UI_MENU_GetCurrentMenuId() == MENU_R_DCS  ||
-	    UI_MENU_GetCurrentMenuId() == MENU_T_DCS  ||
-		UI_MENU_GetCurrentMenuId() == MENU_SQL_TONE	
-		)
+    UI_MENU_GetCurrentMenuId() == MENU_T_CTCS ||
+    UI_MENU_GetCurrentMenuId() == MENU_R_DCS  ||
+    UI_MENU_GetCurrentMenuId() == MENU_T_DCS  ||
+	UI_MENU_GetCurrentMenuId() == MENU_SQL_TONE	
+	)
+{
+    // ОТДЕЛЬНЫЕ НАСТРОЙКИ ДЛЯ X/Y — МЕНЯЙ ЗДЕСЬ
+    uint8_t base_x = 90;  // Базовый X (центр экрана, можно менять)
+    uint8_t y_pos  = 1;   // Y=0 (верхняя строка, меняй на 1, 2 и т.д.)
 
-	{
-		sprintf(String, "%2d", gSubMenuSelection);
-		UI_PrintStringSmall(String, 105, 0, 0,0);
-	}
+    sprintf(String, "%2d", gSubMenuSelection); // Номер значения (01, 02 и т.д.)
+
+    // Центрирование по X (автоматическое)
+    uint8_t text_len = strlen(String);
+    uint8_t text_width = text_len * 4;  // ширина символа в GUI_DisplaySmallestDark — 4 пикселя
+    uint8_t x_pos = base_x - (text_width / 2);  // центр относительно base_x
+
+    // Выводим dark-шрифтом (самый маленький)
+    GUI_DisplaySmallestDark(String, x_pos, y_pos, false, true);
+}
 
 	if ((UI_MENU_GetCurrentMenuId() == MENU_RESET    ||
 	     UI_MENU_GetCurrentMenuId() == MENU_MEM_CH   ||
@@ -647,30 +661,75 @@ void UI_DisplayMenu(void)
 
 
 
-	// ───── ВЕРТИКАЛЬНАЯ ЛИНИЯ В МЕНЮ (меняй только числа ниже) ─────
+//   НЕСКОЛЬКО КОРОТКИХ ПУНКТИРНЫХ ЛИНИЙ ГОРИЗОНТ — ПОЛНАЯ НАСТРОЙКА КАЖДОЙ!
+// ────────────────────────────────────────────────────────────────
+typedef struct {
+	uint8_t y;        // высота (0..63)
+	uint8_t x_start;  // отступ слева
+	uint8_t x_end;    // отступ справа
+	uint8_t step;     // шаг пунктира: 1 = сплошная, 2 = •◦, 3 = •◦◦, 4 = •◦◦◦ и т.д.
+} dashed_line_t;
+
+// ─────── ТУТ НАСТРАИВАЙ СКОЛЬКО УГОДНО ЛИНИЙ ───────
+static const dashed_line_t dashed_lines[] = {
+	{ 8,  0, 127, 2 },   // линия 1: частый пунктир
+	{ 52,  0, 47, 2 },   // линия 2: сплошная (step = 1)
+	// хочешь ещё? — добавляй:
+	// { 24,  15, 113, 3 },
+	// { 40,   8, 120, 5 },
+};
+
+const uint8_t num_lines = ARRAY_SIZE(dashed_lines);
+
+// Рисуем все линии
+for (uint8_t i = 0; i < num_lines; i++)
+{
+	const dashed_line_t *l = &dashed_lines[i];
+	const uint8_t y = l->y;
+
+	for (uint8_t x = l->x_start; x <= l->x_end; x += l->step)
 	{
-		const uint8_t x     = 50;   // ← позиция линии по горизонтали (0..127). 64 = ровно по центру
-		const uint8_t y_start = 1;  // ← с какой высоты начинать (0 = самый верх)
-		const uint8_t y_end   = 54; // ← где заканчивать (63 = самый низ)
-		
-
-		for (uint8_t y = y_start; y <= y_end; y++) {
-			uint8_t page = y >> 3;        // y / 8  → номер страницы (0..7)
-			uint8_t bit  = 1 << (y & 7);  // y % 8  → нужный бит в байте
-			gFrameBuffer[page][x] |= bit; // зажигаем пиксель
-		}
+		if (y < 8)
+			gStatusLine[x] |= (1u << y);                                         // статусная строка
+		else
+			gFrameBuffer[(y - 8) >> 3][x] |= (1u << ((y - 8) & 7));              // основной экран
 	}
+}
+// ────────────────────────────────────────────────────────────────
+//   НЕСКОЛЬКО ВЕРТИКАЛЬНЫХ ПУНКТИРНЫХ ЛИНИЙ — ПОЛНАЯ НАСТРОЙКА КАЖДОЙ!
+// ────────────────────────────────────────────────────────────────
+typedef struct {
+	uint8_t x;        // позиция по горизонтали (0..127)
+	uint8_t y_start;  // отступ сверху
+	uint8_t y_end;    // отступ снизу
+	uint8_t step;     // шаг пунктира: 1 = сплошная, 2 = •◦, 3 = •◦◦ и т.д.
+} vertical_line_t;
 
-	// === ГОРИЗОНТАЛЬНАЯ ЛИНИЯ НА НУЖНОЙ ВЫСОТЕ (0..63) ===
-    uint8_t line_y = 8;   // ← МЕНЯЙ ТОЛЬКО ЭТО ЧИСЛО! (0 = самый верх, 63 = самый низ)
+// ─────── НАСТРАИВАЙ СКОЛЬКО УГОДНО ВЕРТИКАЛЬНЫХ ЛИНИЙ ───────
+static const vertical_line_t vertical_lines[] = {
+	{  49,  10, 64, 2 },   // левая линия — частый пунктир
+	// добавляй свои:
+	// { 30, 15, 50, 4 },
+	// { 90, 12, 52, 1 },
+};
 
-    for (uint8_t x = 0; x < 128; x++)
-    {
-        if (line_y < 8)
-            gStatusLine[x] |= (1u << line_y);                                          // статусная строка
-        else
-            gFrameBuffer[(line_y - 8) >> 3][x] |= (1u << ((line_y - 8) & 7));          // основной экран
-    }
+const uint8_t num_vlines = ARRAY_SIZE(vertical_lines);
+
+// Рисуем все вертикальные линии
+for (uint8_t i = 0; i < num_vlines; i++)
+{
+	const vertical_line_t *l = &vertical_lines[i];
+	const uint8_t x = l->x;
+
+	for (uint8_t y = l->y_start; y <= l->y_end; y += l->step)
+	{
+		if (y < 8)
+			gStatusLine[x] |= (1u << y);
+		else
+			gFrameBuffer[(y - 8) >> 3][x] |= (1u << ((y - 8) & 7));
+	}
+}
+// ────────────────────────────────────────────────────────────────
 	ST7565_BlitFullScreen();
 }
 
