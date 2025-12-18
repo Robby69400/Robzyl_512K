@@ -1807,7 +1807,7 @@ static void OnKeyDown(uint8_t key) {
                 SetState(SCANLIST_CHANNELS);
                 
                 break;	
-
+#endif // ENABLE_SCANLIST_SHOW_DETAIL
             case KEY_4: // Scan list selection
                 //ToggleScanList(scanListSelectedIndex, 0);
 				        ToggleScanList(validScanListIndices[scanListSelectedIndex], 0);
@@ -1834,7 +1834,7 @@ static void OnKeyDown(uint8_t key) {
                 ResetModifiers();
                 gForceModulation = 0; //Kolyan request release modulation
                 break;
-#endif // ENABLE_SCANLIST_SHOW_DETAIL
+
         default:
                 break;
         }

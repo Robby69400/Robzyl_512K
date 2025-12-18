@@ -23,6 +23,9 @@
 extern const uint16_t FM_RADIO_MAX_FREQ;
 extern const uint16_t FM_RADIO_MIN_FREQ;
 
+// Enum dla trybu wpisywania częstotliwości
+enum { FREQ_ENTRY_NONE = 0, FREQ_ENTRY_ACTIVE };
+
 enum {
 	FM_SCAN_OFF = 0,
 	FM_SCAN_UP = 1,
@@ -58,7 +61,14 @@ extern int8_t            gFmFreqOffset;
 /* Nowa zmienna: czy odbierana jest stereo */
 extern bool              gFmIsStereo;
 
+// Zmienne eksportowane dla Manual Frequency Entry
+extern uint8_t freqEntryState;
+extern char    freqEntryBuf[];
+extern uint8_t freqEntryLen;
 
+// Zmienne eksportowane dla Bandwidth
+extern uint8_t gAmBandwidthIndex;
+extern uint8_t gSsbBandwidthIndex;
 
 void    FM_TurnOff(void);
 

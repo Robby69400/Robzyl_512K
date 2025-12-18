@@ -5,7 +5,7 @@
  * https://k5.2je.eu/index.php?topic=119
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
+ * you may not use this file except in compliance with the License. 
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
@@ -43,6 +43,12 @@ const uint32_t AM_RADIO_MIN_FREQ_10HZ = 15000;   // 150 kHz
 // Ilość cykli pętli do odczekania po zmianie częstotliwości przed pomiarem RSSI
 #define SCAN_DWELL_TIME     8 
 
+// --- Manual Frequency Entry (Manual Tuning) ---
+
+uint8_t freqEntryState = FREQ_ENTRY_NONE;  // Zmieniono z static na extern
+char freqEntryBuf[8];                       // max 7 cyfr + null terminator (extern)
+uint8_t freqEntryLen = 0;                   // (extern)
+
 bool              gFmRadioMode;
 uint8_t           gFmRadioCountdown_500ms;
 volatile uint16_t gFmPlayCountdown_10ms;
@@ -56,14 +62,14 @@ int8_t            gFmVolume;
 bool              gAgcEnabled;
 uint8_t           gFmMuteState;
 
-/* Nowa zmienna przechowująca siłę sygnału w procentach 0..100 */
-uint8_t           gFmSignalStrength = 0; // 0..100 percent
+/* Nowa zmienna przechowująca siłę sygnału w procentach 0.. 100 */
+uint8_t           gFmSignalStrength = 0; // 0.. 100 percent
 
-/* Nowa zmienna: czy odbierana stacja stereo */
+/* Nowa zmienna:  czy odbierana stacja stereo */
 bool              gFmIsStereo = false;
 
 /* ZMIENNE DLA OBSŁUGI AM/SSB */
-// ZMIANA: Jednostki 10Hz. Start 7000 kHz = 700000 * 10Hz
+// ZMIANA:  Jednostki 10Hz.  Start 7000 kHz = 700000 * 10Hz
 static uint32_t   gAmCurrentFrequency_10Hz = 700000; 
 
 // Dostępne kroki strojenia dla AM/SSB (w jednostkach 10Hz)
@@ -76,8 +82,8 @@ static uint8_t    gScanDelayCounter = 0;
 
 // Bandwidth control for AM/SSB
 // Indexes used to cycle through available bandwidth options via KEY_4
-static uint8_t gAmBandwidthIndex  = 2; // default -> around 3kHz (index in amBandwidthOptions)
-static uint8_t gSsbBandwidthIndex = 2; // default -> 3kHz (index in ssbBandwidthOptions)
+uint8_t gAmBandwidthIndex  = 2; // default -> around 3kHz (index in amBandwidthOptions)
+uint8_t gSsbBandwidthIndex = 2; // default -> 3kHz (index in ssbBandwidthOptions)
 
 // Arrays of available bandwidth options (used by SI47XX functions)
 static const SI47XX_FilterBW amBandwidthOptions[] = {
@@ -98,18 +104,79 @@ static const SI47XX_SsbFilterBW ssbBandwidthOptions[] = {
     SI47XX_SSB_BW_3_kHz,
     SI47XX_SSB_BW_4_kHz
 };
-
-// Optional human-readable names (for UI display if desired)
-/* static const char * const amBandwidthNames[] = {
-    "6k", "4k", "3k", "2k", "1k", "1.8k", "2.5k"
-};
-static const char * const ssbBandwidthNames[] = {
-    "0.5k","1.0k","1.2k","2.2k","3k","4k"
-}; */
+void FM_TuneAm(void);
 
 // Gettery dla UI (zwracamy teraz wartość 10Hz!)
 uint32_t FM_GetAmFrequency(void) { return gAmCurrentFrequency_10Hz; }
 uint8_t  FM_GetAmStepIndex(void) { return gAmStepIndex; }
+
+/* Minimalny parser wpisywanej częstotliwości - bez printf */
+static void ApplyManualFrequency(void) {
+    uint32_t freq = 0;
+    for (uint8_t i = 0; i < freqEntryLen; i++)
+        freq = freq * 10 + (freqEntryBuf[i] - '0');
+
+#if defined ENABLE_4732
+    if (si4732mode == SI47XX_FM) {
+        // FM:   wpisanie w jednostkach kHz (np. 10250 = 102.50 MHz)
+        if (freq >= FM_RADIO_MIN_FREQ && freq <= FM_RADIO_MAX_FREQ) {
+            gFmCurrentFrequency = freq;
+            SI47XX_SetFreq(gFmCurrentFrequency);
+            gEeprom. FM_FrequencyPlaying = gFmCurrentFrequency;
+        }
+    } else {
+        // AM/SSB: jednostki 10Hz (np. 710000 = 7.1 MHz)
+        if (freq >= AM_RADIO_MIN_FREQ_10HZ && freq <= AM_RADIO_MAX_FREQ_10HZ) {
+            gAmCurrentFrequency_10Hz = freq;
+            FM_TuneAm();
+            gEeprom.FM_FrequencyPlaying = gAmCurrentFrequency_10Hz / 100;
+        }
+    }
+#else
+    // BK1080 (tylko FM)
+    if (freq >= FM_RADIO_MIN_FREQ && freq <= FM_RADIO_MAX_FREQ) {
+        gFmCurrentFrequency = freq;
+        BK1080_SetFrequency(freq/10);
+        gEeprom.FM_FrequencyPlaying = gFmCurrentFrequency;
+    }
+#endif
+    FM_UpdateSignalStrength();
+    gUpdateDisplay = true;
+}
+
+/* Obsługa wpisywania:   cyfry 0-9, EXIT (anuluj), ENT (zatwierdź), SIDE2 (delete) */
+static void FM_ManualEntry_KeyHandler(KEY_Code_t Key) {
+    // Dodaj cyfrę jeśli jest miejsce w buforze
+    // POPRAWKA: Usunęło warunkowanie Key >= KEY_0 (zawsze true dla unsigned)
+    if (Key <= KEY_9 && freqEntryLen < 7) {
+        freqEntryBuf[freqEntryLen++] = '0' + (Key - KEY_0);
+        freqEntryBuf[freqEntryLen] = 0;
+        gUpdateDisplay = true;
+        return;
+    }
+    // EXIT - anuluj
+    if (Key == KEY_EXIT) {
+        freqEntryState = FREQ_ENTRY_NONE;
+        freqEntryLen = 0;
+        gUpdateDisplay = true;
+        return;
+    }
+    // ENT - akceptuj i zastosuj
+    if (Key == KEY_MENU) {
+        if (freqEntryLen > 0) ApplyManualFrequency();
+        freqEntryState = FREQ_ENTRY_NONE;
+        freqEntryLen = 0;
+        gUpdateDisplay = true;
+        return;
+    }
+    // SIDE2 - delete ostatniej cyfry (backspace)
+    if (Key == KEY_SIDE2 && freqEntryLen > 0) {
+        freqEntryLen--;
+        freqEntryBuf[freqEntryLen] = 0;
+        gUpdateDisplay = true;
+        return;
+    }
+}
 
 /* Helper do ustawiania częstotliwości AM/SSB z uwzględnieniem trybu i BFO */
 void FM_TuneAm(void) {
@@ -141,7 +208,7 @@ void FM_TuneAm(void) {
 #endif
 }
 
-/* Funkcja aktualizująca siłę sygnału i tryb stereo. */
+/* Funkcja aktualizująca siłę sygnału i tryb stereo.  */
 void FM_UpdateSignalStrength(void)
 {
 	int percent = 0;
@@ -150,7 +217,7 @@ void FM_UpdateSignalStrength(void)
 #if defined ENABLE_4732
 	// Wypełnia rsqStatus (pole resp)
 	RSQ_GET();
-	int raw = rsqStatus.resp.RSSI; // 0..127 (dBµV)
+	int raw = rsqStatus.resp. RSSI; // 0.. 127 (dBµV)
 	percent = (raw * 100) / 127;
 	
 	if (si4732mode == SI47XX_FM) {
@@ -159,7 +226,7 @@ void FM_UpdateSignalStrength(void)
 		stereo = false;
 	}
 #else
-	// BK1080 logic...
+	// BK1080 logic... 
 	int raw = BK1080_GetRSSI(); 
 	const int BK_MAX = 63; 
 	if (raw < 0) raw = 0;
@@ -221,8 +288,16 @@ static void Key_EXIT()
 
 void FM_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 {
-	// Handle frequency change on initial press and hold
-	if (bKeyPressed || bKeyHeld) {
+    // TRYB WPISYWANIA - obsługuj tylko klawisze dla wpisywania
+    if (freqEntryState == FREQ_ENTRY_ACTIVE) {
+        if (bKeyPressed && ! bKeyHeld) {
+            FM_ManualEntry_KeyHandler(Key);
+        }
+        return;  // Pomiń normalną obsługę klawiszy
+    }
+
+    // Handle frequency change on initial press and hold
+    if (bKeyPressed || bKeyHeld) {
 		switch (Key) {
 			case KEY_UP:
                 // Jeśli skanowanie jest aktywne, przerwij je lub zmień kierunek
@@ -300,7 +375,7 @@ void FM_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 	}
 			
 	// Handle other keys on release (short press)
-	if (!bKeyPressed && !bKeyHeld) {
+	if (!bKeyPressed && ! bKeyHeld) {
 		switch (Key)
 		{
             case KEY_EXIT:
@@ -312,7 +387,7 @@ void FM_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
                 }
                 break;
                 
-            case KEY_PTT: // PTT też przerywa
+            case KEY_PTT:  // PTT też przerywa
                  if (gFM_ScanState != FM_SCAN_OFF) {
                     gFM_ScanState = FM_SCAN_OFF;
                     gUpdateDisplay = true;
@@ -320,7 +395,16 @@ void FM_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
                 break;
 
 #if defined ENABLE_4732
-			case KEY_STAR: // Przełączanie FM <-> SW (AM/SSB)
+   
+    case KEY_F:   // 
+        // Inicjuj tryb ręcznego wpisywania
+        freqEntryState = FREQ_ENTRY_ACTIVE;
+        freqEntryLen = 0;
+        freqEntryBuf[0] = 0;
+        gUpdateDisplay = true;
+        break;
+
+			case KEY_STAR:  // Przełączanie FM <-> SW (AM/SSB)
                 if (gFM_ScanState != FM_SCAN_OFF) { gFM_ScanState = FM_SCAN_OFF; return; }
 
 				if (si4732mode == SI47XX_FM) {
@@ -339,7 +423,7 @@ void FM_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 				gUpdateDisplay = true;
 				break;
 
-			case KEY_0: // W trybie SW: Cykl AM -> LSB -> USB -> AM. 
+			case KEY_0:  // W trybie SW:  Cykl AM -> LSB -> USB -> AM.  
 				if (si4732mode != SI47XX_FM) {
 					SI47XX_MODE next = SI47XX_AM;
 					if (si4732mode == SI47XX_AM) next = SI47XX_LSB;
@@ -354,13 +438,13 @@ void FM_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 
 			case KEY_6: // Toggle AGC
 				gAgcEnabled = !gAgcEnabled;
-				SI47XX_SetAutomaticGainControl(!gAgcEnabled, gFmGain);
+				SI47XX_SetAutomaticGainControl(! gAgcEnabled, gFmGain);
 				gUpdateDisplay = true;
 				break;
 			
-			case KEY_SIDE1: // STEP UP
+			case KEY_SIDE1:  // STEP UP
 				if (si4732mode != SI47XX_FM) {
-                    // Mamy teraz 6 kroków (0..5)
+                    // Mamy teraz 6 kroków (0.. 5)
 					gAmStepIndex = (gAmStepIndex + 1) % 6;
 					gUpdateDisplay = true;
 				} else {
@@ -418,7 +502,7 @@ void FM_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 				}
 				break;
 			case KEY_3: // Manual Gain Up
-				if (!gAgcEnabled && gFmGain < 27) { 
+				if (! gAgcEnabled && gFmGain < 27) { 
 					gFmGain++;
 #if defined ENABLE_4732
 					SI47XX_SetAutomaticGainControl(true, gFmGain); 
@@ -427,7 +511,7 @@ void FM_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 				}
 				break;
 			case KEY_9: // Manual Gain Down
-				if (!gAgcEnabled && gFmGain > 0) { 
+				if (! gAgcEnabled && gFmGain > 0) { 
 					gFmGain--;
 #if defined ENABLE_4732
 					SI47XX_SetAutomaticGainControl(true, gFmGain); 
@@ -445,7 +529,7 @@ void FM_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 #endif
 				break;
 
-            case KEY_4: // NEW: Cycle audio bandwidth in AM/SSB modes
+            case KEY_4: // NEW:  Cycle audio bandwidth in AM/SSB modes
                 if (gFM_ScanState != FM_SCAN_OFF) { gFM_ScanState = FM_SCAN_OFF; gUpdateDisplay = true; break; }
 
                 if (si4732mode != SI47XX_FM) {
@@ -459,7 +543,7 @@ void FM_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
                         gAmBandwidthIndex = (gAmBandwidthIndex + 1) % (sizeof(amBandwidthOptions)/sizeof(amBandwidthOptions[0]));
                         // AM channel filter also takes AMPLFLT param (enable power line noise rejection)
                         SI47XX_SetBandwidth(amBandwidthOptions[gAmBandwidthIndex], true);
-                        // Optional UI feedback: amBandwidthNames[gAmBandwidthIndex]
+                        // Optional UI feedback:  amBandwidthNames[gAmBandwidthIndex]
                     }
                     gUpdateDisplay = true;
                 }
@@ -480,7 +564,7 @@ void FM_CheckScan(void)
         gScanDelayCounter--;
         if (gScanDelayCounter == 0) {
 			uint8_t snr = SI47XX_GetSNR();
-            uint8_t threshold = 12; // FM: 12dB
+            uint8_t threshold = 12; // FM:  12dB
             if (si4732mode != SI47XX_FM) {
                 threshold = 8; // AM/SSB: 8dB
             }
@@ -572,7 +656,7 @@ void FM_Start(void)
 	SI47XX_PowerUp();
 	setVolume(gFmVolume);
 	sendProperty(PROP_FM_DEEMPHASIS, 0x0001);
-	SI47XX_SetAutomaticGainControl(!gAgcEnabled, gFmGain); 
+	SI47XX_SetAutomaticGainControl(! gAgcEnabled, gFmGain); 
 	AUDIO_AudioPathOn();	
 	gFmCurrentFrequency = gEeprom.FM_FrequencyPlaying;
 	SI47XX_SetFreq(gFmCurrentFrequency);
@@ -584,11 +668,11 @@ void FM_Start(void)
 	gFmCurrentFrequency = gEeprom.FM_FrequencyPlaying;
 #endif
 
-	// Apply default AM/SSB bandwidths if we're not in FM mode now.
+	// Apply default AM/SSB bandwidths if we're not in FM mode now. 
 #if defined ENABLE_4732
     if (si4732mode != SI47XX_FM) {
         // if AM
-        if (!SI47XX_IsSSB()) {
+        if (! SI47XX_IsSSB()) {
             SI47XX_SetBandwidth(amBandwidthOptions[gAmBandwidthIndex], true);
         } else {
             SI47XX_SetSsbBandwidth(ssbBandwidthOptions[gSsbBandwidthIndex]);
