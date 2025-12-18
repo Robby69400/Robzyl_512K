@@ -1,5 +1,5 @@
 AUTHOR_STRING := ""
-VERSION_STRING := V5.5.25.1
+VERSION_STRING := V5.5.25.2
 
 # compile options (see README.md for descriptions)
 # 0 = disable
@@ -40,7 +40,7 @@ ENABLE_TU_BAND							:= 0
 ENABLE_RU_BAND							:= 0
 ENABLE_IN_BAND							:= 0
 ENABLE_SCREENSHOT		  				:= 0
-ENABLE_SCANLIST_SHOW_DETAIL		   		:= 1
+ENABLE_SCANLIST_SHOW_DETAIL		   		:= 0
 ENABLE_EEPROM_512K				   		:= 0
 ENABLE_4732								:= 1
 
