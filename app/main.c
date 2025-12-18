@@ -41,10 +41,8 @@
 
 static void MAIN_Key_STAR(bool closecall)
 {
-	if (gCurrentFunction == FUNCTION_TRANSMIT)
-		return;
+	if (gCurrentFunction == FUNCTION_TRANSMIT) return;
 	gWasFKeyPressed          = false;
-	            		
 	SCANNER_Start(closecall);
 	gRequestDisplayScreen = DISPLAY_SCANNER;
 }

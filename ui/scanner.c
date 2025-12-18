@@ -36,7 +36,9 @@ void UI_DisplayScanner(void) //Close Call, CTCSS/DCS scanner, etc.
 	if (gScanSingleFrequency || (gScanCssState != SCAN_CSS_STATE_OFF && gScanCssState != SCAN_CSS_STATE_FAILED))
 		sprintf(String, "FREQ:%u.%05u", gScanFrequency / 100000, gScanFrequency % 100000);
 	else
-		strcpy(String, "FREQ:********");
+	if (gScanBand == 1) strcpy(String, "SCAN VHF");
+		else if (gScanBand == 2) strcpy(String, "SCAN UHF");
+			else strcpy(String, "SCAN ALL");
 	UI_PrintString(String, 2, 0, 1, 8);
 
 	memset(String, 0, sizeof(String));

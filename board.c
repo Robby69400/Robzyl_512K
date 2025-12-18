@@ -664,7 +664,8 @@ uint32_t BOARD_fetchChannelFrequency(const uint16_t Channel)
 	} __attribute__((packed)) info;
 
 	EEPROM_ReadBuffer(ADRESS_FREQ_PARAMS + Channel * 16, &info, sizeof(info));
-	return info.frequency;
+	if (info.frequency == 0xFFFFFFFF) return 0;
+	else return info.frequency;
 }
 uint16_t BOARD_gMR_fetchChannel(const uint32_t freq)
 	{

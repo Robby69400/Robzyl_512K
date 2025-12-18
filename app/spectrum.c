@@ -73,17 +73,19 @@ uint32_t gScanRangeStop = 13000000;   // case 5
 //Modulation                          // case 8      
 //ClearSettings                       // case 9      
 bool Backlight_On_Rx = 0;             // case 10        
-static bool gCounthistory = 1;               // case 11      
+static bool gCounthistory = 1;        // case 11      
 //ClearHistory                        // case 12      
 //RAM                                 // case 13     
 uint16_t SpectrumSleepMs = 0;         // case 14
 uint8_t Noislvl_OFF = 60;             // case 15
-uint8_t Noislvl_ON = 50;              // case 16
-uint16_t Tx_Dev = 13520;              // case 17
-uint16_t Rx_Dev = 13520;              // case 18
-#define PARAMETER_COUNT 19
-////////////////////////////////////////////////////////////////////
+uint8_t Noislvl_ON = 50;
+uint16_t osdPopupSetting = 1000;      // case 16
+uint16_t UOO_trigger = 15;            // case 17
 
+
+#define PARAMETER_COUNT 18
+////////////////////////////////////////////////////////////////////
+uint16_t osdPopupTimer = 1000;
 static uint32_t Fmax = 0;
 uint32_t spectrumElapsedCount = 0;
 uint32_t SpectrumPauseCount = 0;
@@ -366,16 +368,15 @@ static void ResetInterrupts();
 static char StringCode[10] = "";
 
 //
-static uint16_t osdPopupTimer = 0;
 static char osdPopupText[32] = "";
 
 // 
 void ShowOSDPopup(const char *str)
-{
+{   osdPopupTimer = osdPopupSetting;
     strncpy(osdPopupText, str, sizeof(osdPopupText)-1);
     osdPopupText[sizeof(osdPopupText)-1] = '\0';  // Zabezpieczenie przed przepełnieniem
-    UI_DisplayPopup(osdPopupText);
-    ST7565_BlitFullScreen();
+    //UI_DisplayPopup(osdPopupText);
+    //ST7565_BlitFullScreen();
 }
 
 
@@ -603,7 +604,7 @@ static void DeleteHistoryItem(void) {
     }
     
     // Mettre à jour l'affichage
-    osdPopupTimer = 750;
+    
     ShowOSDPopup("Deleted");
     gUpdateDisplay = true;
 }
@@ -620,7 +621,7 @@ static void SaveHistoryToFreeChannel(void) {
     char str[32];
 
     // --- ÉTAPE 1 : VÉRIFIER SI LA FRÉQUENCE EXISTE DÉJÀ ---
-    for (int i = 0; i < 200; i++) {
+    for (int i = 0; i < MR_CHANNEL_LAST; i++) {
         uint32_t freqInMem;
         // Lecture des 4 premiers octets du canal (la fréquence)
         EEPROM_ReadBuffer(ADRESS_FREQ_PARAMS + (i * 16), (uint8_t *)&freqInMem, 4);
@@ -628,7 +629,7 @@ static void SaveHistoryToFreeChannel(void) {
         // Si le canal n'est pas vide (0xFFFFFFFF) et que la fréquence correspond
         if (freqInMem != 0xFFFFFFFF && freqInMem == f) {
             sprintf(str, "Exist CH %d", i + 1);
-            osdPopupTimer = 1500;
+            
             ShowOSDPopup(str);
             return; // On arrête ici, pas de sauvegarde
         }
@@ -636,7 +637,7 @@ static void SaveHistoryToFreeChannel(void) {
 
     // --- ÉTAPE 2 : CHERCHER UN EMPLACEMENT LIBRE ---
     int freeCh = -1;
-    for (int i = 0; i < 200; i++) {
+    for (int i = 0; i < MR_CHANNEL_LAST; i++) {
         uint8_t checkByte;
         // On vérifie juste le premier octet pour voir si le slot est libre
         EEPROM_ReadBuffer(ADRESS_FREQ_PARAMS + (i * 16), &checkByte, 1);
@@ -647,7 +648,7 @@ static void SaveHistoryToFreeChannel(void) {
     }
 
     // --- ÉTAPE 3 : SAUVEGARDER ---
-    osdPopupTimer = 1500;
+    
     if (freeCh != -1) {
         VFO_Info_t tempVFO;
         memset(&tempVFO, 0, sizeof(tempVFO)); 
@@ -705,7 +706,7 @@ void ReadHistory(void) {
         indexFs = position + 1;
       }
     }
-    osdPopupTimer = 1500;
+    
     ShowOSDPopup("History Loaded");
 }
 
@@ -726,7 +727,7 @@ void WriteHistory(void) {
     History.HBlacklisted = 0xFF;
     EEPROM_WriteBuffer(ADRESS_HISTORY + indexFs * sizeof(HistoryStruct),
                        (uint8_t *)&History);
-    osdPopupTimer = 1500;
+    
     ShowOSDPopup("History Saved");
 }
 
@@ -747,14 +748,14 @@ if (historyListActive == true){
       if (PttEmission ==1){
           uint16_t randomChannel = GetRandomChannelFromRSSI(scanChannelsCount);
           static uint32_t rndfreq;
-          uint8_t i = 0;
+          uint16_t i = 0;
           SpectrumDelay = 0; //not compatible with ninja
 
           while (rssiHistory[randomChannel]> 120) //check chanel availability
             {i++;
             randomChannel++;
             if (randomChannel >scanChannelsCount)randomChannel = 1;
-            if (i>200) break;}
+            if (i > MR_CHANNEL_LAST) break;}
           rndfreq = gMR_ChannelFrequencyAttributes[scanChannel[randomChannel]].Frequency;
           SETTINGS_SetVfoFrequency(rndfreq);
           gEeprom.MrChannel     = scanChannel[randomChannel];
@@ -766,11 +767,20 @@ if (historyListActive == true){
       else 
           if (PttEmission ==2){
           SpectrumDelay = 0; //not compatible
-          SETTINGS_SetVfoFrequency(HFreqs[historyListIndex]);
-          COMMON_SwitchToVFOMode();
-          gTxVfo->Modulation = MODULATION_FM;
-          gTxVfo->STEP_SETTING = STEP_0_01kHz;
-          gTxVfo->OUTPUT_POWER = OUTPUT_POWER_HIGH;
+          uint16_t ExitCh = BOARD_gMR_fetchChannel(HFreqs[historyListIndex]);
+          if (ExitCh == 0xFFFF) { //Not a known channel
+              SETTINGS_SetVfoFrequency(HFreqs[historyListIndex]);
+              gTxVfo->STEP_SETTING = STEP_0_01kHz;
+              gTxVfo->Modulation = MODULATION_FM;
+              gTxVfo->OUTPUT_POWER = OUTPUT_POWER_HIGH;
+              COMMON_SwitchToVFOMode();
+          }
+          else {
+            gTxVfo->freq_config_RX.Frequency = HFreqs[historyListIndex];
+            gEeprom.ScreenChannel = ExitCh;
+            gEeprom.MrChannel = ExitCh;
+            COMMON_SwitchToChannelMode();
+          }
           gRequestSaveChannel = 1;
           }
 
@@ -873,18 +883,16 @@ static void ToggleRX(bool on) {
     if (on && isKnownChannel) {
         if(!gForceModulation) settings.modulationType = channelModulation;
         //NO NAMES memmove(rxChannelName, channelName, sizeof(rxChannelName));
-        RADIO_SetModulation(settings.modulationType);
         BK4819_InitAGC(settings.modulationType);
         
     }
     else if(on && appMode == SCAN_BAND_MODE) {
             if (!gForceModulation) settings.modulationType = BParams[bl].modulationType;
-            RADIO_SetModulation(BParams[bl].modulationType);
             BK4819_InitAGC(settings.modulationType);
-            
           }
     
     if (on) { 
+        RADIO_SetModulation(settings.modulationType);
         BK4819_SetFilterBandwidth(settings.listenBw, false);
         BK4819_WriteRegister(BK4819_REG_3F, BK4819_REG_02_CxCSS_TAIL);
 
@@ -892,6 +900,8 @@ static void ToggleRX(bool on) {
         BK4819_SetFilterBandwidth(BK4819_FILTER_BW_WIDE, false); //Scan in 25K bandwidth
         if(appMode!=CHANNEL_MODE) BK4819_WriteRegister(0x43, GetBWRegValueForScan());
         BK4819_ToggleGpioOut(BK4819_GPIO6_PIN2_GREEN, 0);
+        RADIO_SetModulation(MODULATION_FM);
+        BK4819_InitAGC(MODULATION_FM);
     }
 
     ToggleAudio(on);
@@ -1005,7 +1015,7 @@ static void Measure() {
         gIsPeak      = false;
         isFirst      = false;
     }
-    if (settings.rssiTriggerLevelUp == 50 && rssi > previousRssi + 15) {
+    if (settings.rssiTriggerLevelUp == 50 && rssi > previousRssi + UOO_trigger) {
       peak.f = scanInfo.f;
       peak.i = scanInfo.i;
       FillfreqHistory();
@@ -1365,9 +1375,9 @@ switch(SpectrumMonitor) {
   
   len = sprintf(&String[pos],"%dms %s %s ", DelayRssi, gModulationStr[settings.modulationType],bwNames[settings.listenBw]);
   pos += len;
-  int32_t afc = ((int64_t)(int16_t)BK4819_ReadRegister(0x6D) * 1000LL) / 291LL;
-  if (afc){
-      len = sprintf(&String[pos],"A%+d ", afc);
+  int16_t afcVal = BK4819_GetAFCValue();
+  if (afcVal) {
+      len = sprintf(&String[pos],"A%+d ", afcVal);
       pos += len;
   }
   GUI_DisplaySmallest(String, 0, 1, true,true);
@@ -1693,7 +1703,6 @@ static void OnKeyDown(uint8_t key) {
      
     if (historyListActive) {
           gHistoryScan = !gHistoryScan;
-          osdPopupTimer = 1000;
           if (gHistoryScan) {
               ShowOSDPopup("SCAN HISTORY ON");
               gIsPeak = false; // Force le redémarrage si on était bloqué
@@ -1899,7 +1908,6 @@ static void OnKeyDown(uint8_t key) {
                 break;
           case KEY_3:
           case KEY_1:
-          {
               bool isKey3 = (key == KEY_3);
               switch(parametersSelectedIndex) {//SEE HERE parametersSelectedIndex
                   case 0: // DelayRssi
@@ -1984,30 +1992,24 @@ static void OnKeyDown(uint8_t key) {
                       break;
                   case 15: // Noislvl_OFF
                       Noislvl_OFF = isKey3 ? 
-                                 (Noislvl_OFF >= 100 ? 0 : Noislvl_OFF + 1) :
-                                 (Noislvl_OFF <= 0 ? 100 : Noislvl_OFF - 1);
+                                 (Noislvl_OFF >= 100 ? 30 : Noislvl_OFF + 1) :
+                                 (Noislvl_OFF <= 30 ? 100 : Noislvl_OFF - 1);
+                      Noislvl_ON = Noislvl_OFF - 10;                      
                       break;
-                  case 16: // Noislvl_ON
-                      Noislvl_ON = isKey3 ? 
-                                 (Noislvl_ON >= 100 ? 0 : Noislvl_ON + 1) :
-                                 (Noislvl_ON <= 0 ? 100 : Noislvl_ON - 1);
+                  case 16: //osdPopupSetting
+                      osdPopupSetting = isKey3 ? 
+                                 (osdPopupSetting >= 10000 ? 0 : osdPopupSetting + 1000) :
+                                 (osdPopupSetting <= 0 ? 10000 : osdPopupSetting - 1000);
                       break;
-                  case 17: // Tx_Dev
-                      Tx_Dev = isKey3 ? 
-                                 (Tx_Dev >= 4095 ? 0 : Tx_Dev + 1) :
-                                 (Tx_Dev <= 0 ? 4095 : Tx_Dev - 1);
-                      break;
-                  case 18: // Rx_Dev
-                      Rx_Dev = isKey3 ? 
-                                 (Rx_Dev >= 4095 ? 0 : Rx_Dev + 1) :
-                                 (Rx_Dev <= 0 ? 4095 : Rx_Dev - 1);
+                  case 17: // UOO_trigger
+                      UOO_trigger = isKey3 ? 
+                                 (UOO_trigger >= 50 ? 0 : UOO_trigger + 1) :
+                                 (UOO_trigger <= 0 ? 50 : UOO_trigger - 1);
                       break;
                   
               }
-            
+        break;
 
-              break;
-          }
         case KEY_7:
           SaveSettings(); 
         break;
@@ -2031,7 +2033,7 @@ static void OnKeyDown(uint8_t key) {
     }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     
-  osdPopupTimer = 750;
+  
 
   switch (key) {
           
@@ -2721,24 +2723,22 @@ static void Tick() {
     if (gBacklightCountdown > 0)
       if (--gBacklightCountdown == 0)	BACKLIGHT_TurnOff();
     gNextTimeslice_500ms = false;
-  }
   
-  if (osdPopupTimer > 0) {
-        UI_DisplayPopup(osdPopupText);  // Wyświetl aktualny tekst
-        ST7565_BlitFullScreen();
-        osdPopupTimer -= 10;  // Tick co 10ms
-        if (osdPopupTimer <= 0) {
-            osdPopupText[0] = '\0';  // Wyczyść tekst po wygaśnięciu
-        }
-        return;  // Priorytet dla OSD (?)
-    }
 
+  }
 
   if (gNextTimeslice_10ms) {
     HandleUserInput();
     gNextTimeslice_10ms = 0;
     if (isListening || SpectrumMonitor || WaitSpectrum) UpdateListening(); 
     if(SpectrumPauseCount) SpectrumPauseCount--;
+    if (osdPopupTimer > 0) {
+        UI_DisplayPopup(osdPopupText);  // Wyświetl aktualny tekst
+        ST7565_BlitFullScreen();
+        osdPopupTimer -= 10; 
+        if (osdPopupTimer <= 0) {osdPopupText[0] = '\0';}
+        return;
+    }
 
   }
 
@@ -2918,7 +2918,8 @@ typedef struct {
     uint8_t IndexMaxLT;
     uint8_t IndexPS;
     uint8_t Noislvl_OFF;
-    uint8_t Noislvl_ON; 
+    uint16_t UOO_trigger;
+    uint16_t osdPopupSetting;
     bool Backlight_On_Rx;
 } SettingsEEPROM;
 
@@ -2959,7 +2960,9 @@ static void LoadSettings()
   IndexPS = eepromData.IndexPS;
   SpectrumSleepMs = PS_Steps[IndexPS];
   Noislvl_OFF = eepromData.Noislvl_OFF;
-  Noislvl_ON  = eepromData.Noislvl_ON; 
+  Noislvl_ON  = Noislvl_OFF-10; 
+  UOO_trigger = eepromData.UOO_trigger;
+  osdPopupSetting = eepromData.osdPopupSetting;
   Backlight_On_Rx = eepromData.Backlight_On_Rx;
   ChannelAttributes_t att;
   for (int i = 0; i < MR_CHANNEL_LAST+1; i++) {
@@ -3002,7 +3005,8 @@ static void SaveSettings()
   eepromData.IndexPS = IndexPS;
   eepromData.Backlight_On_Rx = Backlight_On_Rx;
   eepromData.Noislvl_OFF = Noislvl_OFF;
-  eepromData.Noislvl_ON  = Noislvl_ON ;
+  eepromData.UOO_trigger = UOO_trigger;
+  eepromData.osdPopupSetting = osdPopupSetting;
   
   for (int i = 0; i < 32; i++) { 
       eepromData.BPRssiTriggerLevelUp[i] = BPRssiTriggerLevelUp[i];
@@ -3031,7 +3035,7 @@ static void SaveSettings()
   // Write in 8-byte chunks
   for (uint16_t addr = 0; addr < sizeof(eepromData); addr += 8) 
     EEPROM_WriteBuffer(addr + 0x1D10, ((uint8_t*)&eepromData) + addr);
-  osdPopupTimer = 1500;
+  
   ShowOSDPopup("Params Saved");
 }
 
@@ -3072,6 +3076,8 @@ static void ClearSettings()
   Backlight_On_Rx = 0;
   Noislvl_OFF = 60; 
   Noislvl_ON = 50;  
+  UOO_trigger = 15;
+  osdPopupSetting = 1000;
   for (int i = 0; i < 32; i++) { 
       BPRssiTriggerLevelUp[i] = 5;
       settings.bandEnabled[i] = 0;
@@ -3086,7 +3092,7 @@ static void ClearSettings()
   BK4819_WriteRegister(BK4819_REG_3C, 20360);
   BK4819_WriteRegister(BK4819_REG_43, 13896);
   BK4819_WriteRegister(BK4819_REG_2B, 49152);
-  osdPopupTimer = 1500;
+  
   ShowOSDPopup("Default Settings");
   SaveSettings();
 }
@@ -3222,15 +3228,17 @@ static void GetParametersText(uint8_t index, char *buffer) {
             sprintf(buffer, "Noislvl_OFF: %d", Noislvl_OFF);
             break;
         case 16:
-            sprintf(buffer, "Noislvl_ON: %d", Noislvl_ON);
+            if (osdPopupSetting)
+                sprintf(buffer, "POPUPS: %ds", osdPopupSetting / 1000);
+            else sprintf(buffer, "NO POPUPS");
+            break;
+        
             break;
         case 17:
-            sprintf(buffer, "Tx_Dev: %d", Tx_Dev);
-            break;
-        case 18:
-            sprintf(buffer, "Rx_Dev: %d", Rx_Dev);
+            sprintf(buffer, "UOO_trigger: %d", UOO_trigger);
             break;
 
+        
         default:
             // Gestion d'un index inattendu (optionnel)
             buffer[0] = '\0';
@@ -3247,19 +3255,88 @@ static void GetParametersText(uint8_t index, char *buffer) {
 }
 
 static void GetHistoryItemText(uint8_t index, char* buffer) {
-        
     char freqStr[10];
-    char Name[12]="";
+    char Name[12] = ""; // 10 chars max + 1 pour \0 + 1 pour sécurité
     uint8_t dcount;
-    uint32_t f=HFreqs[index];
+    uint32_t f = HFreqs[index];
+    
+    buffer[0] = '\0'; 
+
     if (f < 1400000 || f > 130000000) return;
-    snprintf(freqStr, sizeof(freqStr), "%u.%05u", f/100000, f%100000);
+
+    // --- 1. Préparation des données ---
+    snprintf(freqStr, sizeof(freqStr), "%u.%05u", f / 100000, f % 100000);
     RemoveTrailZeros(freqStr);
+    
     uint16_t Hchannel = BOARD_gMR_fetchChannel(f);
-    if(gCounthistory) dcount = HCount[index];
-    else dcount = HCount[index]/2;
-    if (Hchannel != 0xFFFF) ReadChannelName(Hchannel,Name);
-    snprintf(buffer,19, "%s%s %s:%u", HBlacklisted[index] ? "#" : "",freqStr,Name,dcount);
+    
+    if (gCounthistory) {
+        dcount = HCount[index];
+    } else {
+        dcount = HCount[index] / 2;
+    }
+    
+    // Lecture du nom du canal (Argument 1: Index, Argument 2: Buffer)
+    if (Hchannel != 0xFFFF) {
+        ReadChannelName(Hchannel, Name);
+        Name[10] = '\0'; // Troncature explicite du nom à 10 caractères max
+    }
+    
+    const char *blacklistPrefix = HBlacklisted[index] ? "#" : "";
+
+    // --- 2. Détermination de l'espace nécessaire (Max 18 chars) ---
+    const size_t MAX_LINE_CHARS = 18; 
+    
+    // Construction de la chaîne du compteur (Ex: ":5" ou ":1234")
+    char dcountStr[6]; 
+    snprintf(dcountStr, sizeof(dcountStr), ":%u", dcount);
+
+    size_t len_prefix = strlen(blacklistPrefix);
+    size_t len_freq = strlen(freqStr);
+    size_t len_name = strlen(Name);
+    size_t len_dcount = strlen(dcountStr);
+
+    // Longueur requise pour la partie non-fréquence : [Prefix] + [Espace] + [Name] + [Dcount]
+    size_t critical_len = len_prefix + 1 + len_name + len_dcount; 
+    
+    size_t space_for_freq = 0;
+    
+    if (MAX_LINE_CHARS > critical_len) {
+        // Cas nominal : Il y a de la place après le Nom et le Compteur.
+        space_for_freq = MAX_LINE_CHARS - critical_len;
+    } else {
+        // Cas critique : Le Nom et le Compteur sont trop longs. On supprime le Nom.
+        
+        // Recalcul de la longueur critique sans le Nom et l'espace qui le précède.
+        critical_len = len_prefix + 1 + len_dcount;
+        
+        if (MAX_LINE_CHARS > critical_len) {
+            space_for_freq = MAX_LINE_CHARS - critical_len;
+        } else {
+            // Cas très critique : On donne tout l'espace sauf le compteur (très court)
+            space_for_freq = MAX_LINE_CHARS - len_dcount; 
+        }
+        
+        // Suppression du nom pour l'affichage final
+        Name[0] = '\0';
+        len_name = 0;
+    }
+
+    // --- 3. Construction de la chaîne finale (avec troncature de la Fréquence) ---
+    
+    // La longueur finale à afficher pour la fréquence (min(espace_disponible, longueur_réelle))
+    size_t final_freq_len = (space_for_freq > len_freq) ? len_freq : space_for_freq;
+    
+    // Le format : [Prefix][Freq Tronquée][Espace si Nom][Name][Dcount]
+    
+    // Le snprintf final doit toujours garantir que la taille n'est pas dépassée (19)
+    snprintf(buffer, 19, "%s%.*s%s%s%s", 
+             blacklistPrefix,
+             (int)final_freq_len, // Troncature dynamique de la fréquence
+             freqStr, 
+             (len_name > 0) ? " " : "", // Espace si le Nom n'est pas vide (géré par la suppression ci-dessus)
+             Name, 
+             dcountStr);
 }
 
 static void RenderList(const char* title, uint8_t numItems, uint8_t selectedIndex, uint8_t scrollOffset,

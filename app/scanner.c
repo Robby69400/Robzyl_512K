@@ -33,6 +33,7 @@ DCS_CodeType_t    gScanCssResultType;
 uint8_t           gScanCssResultCode;
 bool              gScanSingleFrequency; // scan CTCSS/DCS codes for current frequency
 uint8_t           gScanChannel;
+uint8_t           gScanBand;
 uint32_t          gScanFrequency;
 SCAN_CssState_t   gScanCssState;
 uint8_t           gScanProgressIndicator;
@@ -70,10 +71,20 @@ static void SCANNER_Key_EXIT(bool bKeyPressed, bool bKeyHeld)
 void SCANNER_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 {
 	switch (Key) {
-		case KEY_0:
+		
 		case KEY_1:
+			gScanBand = 1; //VHF
+			SCANNER_Start(0);
+			break;
 		case KEY_2:
+			gScanBand = 2; //UHF
+			SCANNER_Start(0);
+			break;
 		case KEY_3:
+			gScanBand = 3; //ALL
+			SCANNER_Start(0);
+			break;
+		case KEY_0:
 		case KEY_4:
 		case KEY_5:
 		case KEY_6:
@@ -83,6 +94,7 @@ void SCANNER_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 		case KEY_MENU:
 		case KEY_UP:
 		case KEY_DOWN:
+			break;
 		case KEY_EXIT:
 			SCANNER_Key_EXIT(bKeyPressed, bKeyHeld);
 			break;
@@ -126,12 +138,10 @@ void SCANNER_Start(bool singleFreq)
 	else { //Close call
 		gScanCssState  = SCAN_CSS_STATE_OFF;
 		gScanFrequency = 0xFFFFFFFF;
-
-		BK4819_PickRXFilterPathBasedOnFrequency(gScanFrequency);
-		//BK4819_PickRXFilterPathBasedOnFrequency(40000000);
+		if (gScanBand == 1) BK4819_PickRXFilterPathBasedOnFrequency(10000000);
+		else if (gScanBand == 2) BK4819_PickRXFilterPathBasedOnFrequency(50000000);
+			 else BK4819_PickRXFilterPathBasedOnFrequency(0xFFFFFFFF);
 		BK4819_EnableFrequencyScan();
-
-		
 	}
 	gScanDelay_10ms        = scan_delay_10ms;
 	gScanCssResultCode     = 0xFF;

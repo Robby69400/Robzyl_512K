@@ -1,0 +1,36 @@
+@echo off
+cls
+if not exist version.txt (
+    echo 1 > version.txt
+)
+set /p VERSION=<version.txt
+set /a VERSION=%VERSION%+1
+echo %VERSION% > version.txt
+set INDEX_FILE=index.h
+
+if exist "%INDEX_FILE%" (
+    (
+        for /f "delims=" %%A in (%INDEX_FILE%) do (
+            echo %%A | findstr /C:"#define APP_VERSION" >nul
+            if not errorlevel 1 (
+                echo #define APP_VERSION %VERSION%
+            ) else (
+                echo %%A
+            )
+        )
+    ) > "%INDEX_FILE%.tmp"
+
+    move /Y "%INDEX_FILE%.tmp" "%INDEX_FILE%" >nul
+    echo APP_VERSION updated to %VERSION%.
+) else (
+    echo ERROR : %INDEX_FILE% not found !
+)
+
+del .\compiled-firmware\*.bin
+docker build -t uvk5 .
+docker run --rm -v %CD%\compiled-firmware:/app/compiled-firmware uvk5 /bin/bash -c "cd /app && make clean && make -s ENABLE_RU_BAND=1  ENABLE_EEPROM_512K=1    TARGET=robzyl.512k.ru            && cp *packed.bin compiled-firmware/"
+docker run --rm -v %CD%\compiled-firmware:/app/compiled-firmware uvk5 /bin/bash -c "cd /app && make -s               ENABLE_RU_BAND=1                          TARGET=robzyl.ru                 && cp *packed.bin compiled-firmware/"
+docker run --rm -v %CD%\compiled-firmware:/app/compiled-firmware uvk5 /bin/bash -c "cd /app && make -s               ENABLE_RU_BAND=1  ENABLE_SCREENSHOT=1     TARGET=robzyl.screenshot.ru      && cp *packed.bin compiled-firmware/"
+
+time /t
+pause

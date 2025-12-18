@@ -203,7 +203,11 @@ void BK4819_WriteRegister(BK4819_REGISTER_t Register, uint16_t Data) {
 	scnsclsda();
 }
 
-
+int16_t BK4819_GetAFCValue() { //from Hawk5
+  int16_t signedAfc = (int16_t)BK4819_ReadRegister(0x6D);
+  // * 3.3(3)
+  return (signedAfc * 10) / 3;
+}
 
 void BK4819_SetAGC(bool enable)
 {

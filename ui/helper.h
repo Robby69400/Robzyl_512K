@@ -42,6 +42,7 @@ void PutPixel(uint8_t x, uint8_t y, bool fill);
 void PutPixelStatus(uint8_t x, uint8_t y, bool fill);
 void DrawVLine(int sy, int ey, int nx, bool fill);
 void GUI_DisplaySmallest(const char *pString, uint8_t x, uint8_t y, bool statusbar, bool fill);
+void GUI_DisplaySmallestDark(const char *pString, uint8_t x, uint8_t y, bool statusbar, bool wide_spacing); // ИНВЕРСИЯ МЕЛКОГО ТЕКСТА INVERSION FONT SMALL* // false, true шаг между символами
 
 #ifdef ENABLE_PL_BAND
 void UI_PrintStringSmallScrolling(const char *pString, uint8_t Start, uint8_t End, uint8_t Line, uint8_t scrollOffset);

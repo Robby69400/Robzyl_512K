@@ -82,7 +82,7 @@ void     BK4819_SetRegValue(RegisterSpec s, uint16_t v);
 
 void     BK4819_SetAGC(bool enable);
 void     BK4819_InitAGC(ModulationMode_t modulation);
-
+int16_t  BK4819_GetAFCValue();
 void     BK4819_ToggleGpioOut(BK4819_GPIO_PIN_t Pin, bool bSet);
 
 void     BK4819_SetCDCSSCodeWord(uint32_t CodeWord);
