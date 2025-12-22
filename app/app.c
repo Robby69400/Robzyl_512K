@@ -714,14 +714,14 @@ else
 void APP_TimeSlice10ms(void)
 {
 	gFlashLightBlinkCounter++;
-
+	#ifdef ENABLE_UART
 	if (UART_IsCommandAvailable())
 	{
 		__disable_irq();
 		UART_HandleCommand();
 		__enable_irq();
 	}
-
+	#endif
 	if (gReducedService)
 		return;
 

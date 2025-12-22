@@ -66,7 +66,7 @@ const t_menu_item MenuList[] =
 	{"BatSav",  MENU_SAVE          },
 	{"ChSave",  MENU_MEM_CH        },
 	// hidden menu items from here on
-	// enabled if pressing upper side button at power-on
+	// enabled if pressing 0 at power-on
 	{"F1Shrt",  MENU_F1SHRT        },
 	{"F1Long",  MENU_F1LONG        },
 	{"F2Shrt",  MENU_F2SHRT        },

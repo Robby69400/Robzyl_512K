@@ -499,7 +499,9 @@ void BOARD_Init(void)
 	BACKLIGHT_InitHardware();
 	BOARD_ADC_Init();
 	ST7565_Init(true);
+	#ifdef ENABLE_UART
 	CRC_Init();
+	#endif
 }
 
 void BOARD_EEPROM_Init(void)

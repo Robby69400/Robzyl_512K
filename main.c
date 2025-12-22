@@ -40,10 +40,12 @@
 #include "ui/menu.h"
 #include "version.h"
 
+#ifdef ENABLE_UART
 void _putchar(char c)
 {
 	UART_Send((uint8_t *)&c, 1);
 }
+#endif
 
 void Main(void)
 {
@@ -64,12 +66,14 @@ void Main(void)
 
 	SYSTICK_Init();
 	BOARD_Init();
+	#ifdef ENABLE_UART
 	UART_Init();
+	#endif
 
 	boot_counter_10ms = 250;   // 2.5 sec
-
+	#ifdef ENABLE_UART
 	UART_Send(UART_Version, strlen(UART_Version));
-
+	#endif
 	// Not implementing authentic device checks
 
 	memset(&gEeprom, 0, sizeof(gEeprom));
