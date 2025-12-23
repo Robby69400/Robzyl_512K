@@ -52,7 +52,7 @@ static volatile bool gSpectrumChangeRequested = false;
 static volatile uint8_t gRequestedSpectrumState = 0;
 
 
-#define HISTORY_SIZE 100
+#define HISTORY_SIZE 30
 
 static uint32_t    HFreqs[HISTORY_SIZE];
 static uint8_t     HCount[HISTORY_SIZE];
@@ -2385,16 +2385,60 @@ static void RenderStatus() {
   ST7565_BlitStatusLine();
 }
 
-static void RenderSpectrum() {
+// Преобразование dBm → RSSI (обратное к Rssi2DBm)
+static uint16_t DBm2Rssi(int dbm)
+{
+    // Формула из оригинального кода: dbm ≈ rssi - 160 (примерно)
+    // Мы делаем обратное: rssi ≈ dbm + 160
+    // Ограничиваем в диапазоне 0..255 (как реальное RSSI от BK4819)
+    int rssi = dbm + 160;
+    if (rssi < 0) rssi = 0;
+    if (rssi > 255) rssi = 255;
+    return (uint16_t)rssi;
+}
+
+
+
+
+static void RenderSpectrum()
+{
     if (classic) {
         DrawNums();
         UpdateDBMaxAuto();
         DrawSpectrum();
+
+        // === ФИКСИРОВАННЫЕ ГОРИЗОНТАЛЬНЫЕ ПУНКТИРНЫЕ ЛИНИИ ===
+        // 5 фиксированных уровней: -120, -90, -60, -30, 0 dBm
+        const int fixedLevels[] = {-80, -60, -40};
+        const int numLevels = 3;
+
+        int i;
+        int y;
+        int x;
+
+        for (i = 0; i < numLevels; i++) {
+            y = Rssi2Y(DBm2Rssi(fixedLevels[i]));
+
+            if (y < 8 || y > DrawingEndY) continue;
+
+            // ЧЁРНАЯ пунктирная линия ОТ КРАЯ ДО КРАЯ: 1:2
+            for (x = 0; x < 128; x += 3) {
+                PutPixel(x, y, true);  // Чёрная линия (белый пиксель на экране)
+            }
+
+            // БЕЛАЯ пунктирная линия — смещена вправо на 1 пиксель
+            for (x = 1; x < 128; x += 3) {  // x + 1
+                PutPixel(x, y, false);  // Белая линия (стираем пиксель)
+            }
+        }
+        // === КОНЕЦ СЕТКИ ===
     }
+
     if(isListening) {
-      DrawF(peak.f);}
+      DrawF(peak.f);
+    }
     else {
-      if (SpectrumMonitor)DrawF(HFreqs[historyListIndex]);
+      if (SpectrumMonitor) DrawF(HFreqs[historyListIndex]);
       else DrawF(scanInfo.f);
     }
 }

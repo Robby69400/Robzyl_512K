@@ -41,12 +41,18 @@
 
 bool gBacklightAlwaysOn = false;
 
-static void MAIN_Key_STAR(bool closecall)
+static void MAIN_Key_STAR(void)
 {
-	if (gCurrentFunction == FUNCTION_TRANSMIT) return;
-	gWasFKeyPressed          = false;
-	SCANNER_Start(closecall);
-	gRequestDisplayScreen = DISPLAY_SCANNER;
+	if (gKeyBeingHeld)
+	{
+		APP_RunSpectrum(4);  // basic spectrum (бывший F+5)
+	} else if (gWasFKeyPressed) {
+		APP_RunSpectrum(2);  // band scan (бывший F+6)
+	} else {
+		APP_RunSpectrum(1);  // channel scan (бывший F+4)
+	}
+	gWasFKeyPressed = false;
+	gUpdateDisplay = true;
 }
 
 static void processFKeyFunction(const KEY_Code_t Key, const bool beep)
@@ -109,6 +115,18 @@ static void processFKeyFunction(const KEY_Code_t Key, const bool beep)
 			COMMON_SwitchVFOMode();
 			break;
 
+		case KEY_7:
+			APP_RunSpectrum(1);  // F+7 — channel scan spectrum
+			break;
+
+		case KEY_8:
+			APP_RunSpectrum(2);  // F+8 — band scan spectrum
+			break;
+
+		case KEY_9:
+			APP_RunSpectrum(4);  // F+9 — basic spectrum
+			break;
+
 		default:
 			gWasFKeyPressed = false;
 			break;
@@ -130,7 +148,7 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 			switch (Key)
 			{
 				case KEY_1:
-					// Длинное 1 — то же, что F + 1
+					// Длинное 1 = F+1
 					if (!IS_FREQ_CHANNEL(gTxVfo->CHANNEL_SAVE)) {
 						gWasFKeyPressed = false;
 
@@ -169,7 +187,7 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 					break;
 
 				case KEY_2:
-					// Длинное 2 — то же, что F + 2
+					// Длинное 2 = F+2
 					if (++gTxVfo->SCANLIST > 15) gTxVfo->SCANLIST = 0;
 					SETTINGS_UpdateChannel(gTxVfo->CHANNEL_SAVE, gTxVfo, true);
 					gVfoConfigureMode = VFO_CONFIGURE;
@@ -177,7 +195,7 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 					break;
 
 				case KEY_3:
-					// Длинное 3 — то же, что F + 3
+					// Длинное 3 = F+3
 					COMMON_SwitchVFOMode();
 					break;
 
@@ -203,30 +221,36 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 					RADIO_SetupRegisters(true);
 					gUpdateDisplay = true;
 					break;
-				case KEY_7:
-					// Длинное 7 — spectrum 1 (channel scan)
-					APP_RunSpectrum(1);
-					gUpdateDisplay = true;
-					break;
-				case KEY_8:
-					// Длинное 8 — spectrum 2 (band scan)
-					APP_RunSpectrum(2);
+				case KEY_0:
+					// Длинное 0 — смена демодуляции
+					ACTION_SwitchDemodul();
+					gRequestSaveChannel = 1;
+					RADIO_SetupRegisters(true);
 					gUpdateDisplay = true;
 					break;
 				case KEY_9:
-					// Длинное 9 — spectrum 4 (basic spectrum)
-					APP_RunSpectrum(4);
-					gUpdateDisplay = true;
-					break;
-				case KEY_0:
-					// Длинное 0 — смена демодуляции
-					if (gTxVfo->Modulation == MODULATION_FM) {
-						gTxVfo->Modulation = MODULATION_AM;
+					// Длинное 9 — toggle "подсветка всегда включена" (перенесено с 8)
+					gBacklightAlwaysOn = !gBacklightAlwaysOn;
+					if (gBacklightAlwaysOn) {
+						gBacklightCountdown = 0;
+						backlightOn = true;
 					} else {
-						gTxVfo->Modulation = MODULATION_FM;
+						backlightOn = true;
+						if (gEeprom.BACKLIGHT_TIME == 7) {
+							gBacklightCountdown = 0;
+						} else {
+							switch (gEeprom.BACKLIGHT_TIME)
+							{
+								case 1: gBacklightCountdown = 10; break;
+								case 2: gBacklightCountdown = 20; break;
+								case 3: gBacklightCountdown = 40; break;
+								case 4: gBacklightCountdown = 120; break;
+								case 5: gBacklightCountdown = 240; break;
+								case 6: gBacklightCountdown = 480; break;
+								default: gBacklightCountdown = 0; break;
+							}
+						}
 					}
-					gRequestSaveChannel = 1;
-					RADIO_SetupRegisters(true);
 					gUpdateDisplay = true;
 					break;
 				default:
@@ -241,35 +265,6 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 		return;
 	}
 
-	// F + 8 — toggle подсветка всегда включена
-	if (gWasFKeyPressed && Key == KEY_8)
-	{
-		gBacklightAlwaysOn = !gBacklightAlwaysOn;
-		if (gBacklightAlwaysOn) {
-			gBacklightCountdown = 0;
-			backlightOn = true;
-		} else {
-			backlightOn = true;
-			if (gEeprom.BACKLIGHT_TIME == 7) {
-				gBacklightCountdown = 0;
-			} else {
-				switch (gEeprom.BACKLIGHT_TIME)
-				{
-					case 1: gBacklightCountdown = 10; break;
-					case 2: gBacklightCountdown = 20; break;
-					case 3: gBacklightCountdown = 40; break;
-					case 4: gBacklightCountdown = 120; break;
-					case 5: gBacklightCountdown = 240; break;
-					case 6: gBacklightCountdown = 480; break;
-					default: gBacklightCountdown = 0; break;
-				}
-			}
-		}
-		gUpdateDisplay = true;
-		gWasFKeyPressed = false;
-		return;
-	}
-
 	// F + 0 — FM-радио
 	if (gWasFKeyPressed && Key == KEY_0)
 	{
@@ -278,7 +273,7 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 		return;
 	}
 
-	// F + 4 — сканер (обычный)
+	// F + 4 — обычный сканер
 	if (gWasFKeyPressed && Key == KEY_4)
 	{
 		SCANNER_Start(false);
@@ -417,7 +412,7 @@ void MAIN_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 		{
 			gWasFKeyPressed = true;
 			gKeyInputCountdown = 0;
-			gUpdateDisplay = true;  // иконка F не гаснет сразу
+			gUpdateDisplay = true;
 		}
 		return;
 	}
@@ -488,8 +483,7 @@ void MAIN_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 			break;
 
 		case KEY_STAR:
-			if (gWasFKeyPressed) MAIN_Key_STAR(1);
-			else MAIN_Key_STAR(0);
+			MAIN_Key_STAR();
 			break;
 
 		case KEY_F:
