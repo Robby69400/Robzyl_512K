@@ -3084,8 +3084,8 @@ void ClearSettings()
   IndexMaxLT = 0;
   IndexPS = 0;
   Backlight_On_Rx = 1;
-  Noislvl_OFF = 69; 
-  Noislvl_ON = 59;  
+  Noislvl_OFF = 60; 
+  Noislvl_ON = 50;  
   UOO_trigger = 15;
   osdPopupSetting = 500;
   for (int i = 0; i < 32; i++) { 

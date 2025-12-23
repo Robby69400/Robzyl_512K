@@ -277,28 +277,21 @@ void BK4819_SetAGC(bool enable)
 
 void BK4819_InitAGC(const uint8_t agcType, ModulationMode_t modulation)
 {
-	
-	
-	uint16_t uVar1 = BK4819_ReadRegister(0x31);// HACK FIXME AM
 	if(modulation==MODULATION_AM)
 	{
 		//AM modulation
 		switch(agcType)
 		{	
 			case RX_AGC_SLOW:
-				BK4819_WriteRegister(BK4819_REG_49, (0 << 14) | (50 << 7) | (15 << 0));
+				BK4819_WriteRegister(BK4819_REG_49, (0 << 14) | (50 << 7) | (10 << 0));
 				break;
 			case RX_AGC_FAST:
-				BK4819_WriteRegister(BK4819_REG_49, (0 << 14) | (50 << 7) | (25 << 0));
+				BK4819_WriteRegister(BK4819_REG_49, (0 << 14) | (50 << 7) | (20 << 0));
 				break;
 			default:
 				return;
 		}
-		BK4819_WriteRegister(0x31,uVar1 | 1);		// HACK FIXME AM
-		BK4819_WriteRegister(0x42,0x6F5C);		// HACK FIXME AM
-		BK4819_WriteRegister(0x2A,0x7434);		// HACK FIXME AM
-		BK4819_WriteRegister(0x2B,0x0600);		// HACK FIXME AM
-		BK4819_WriteRegister(0x2F,0x9990);		// HACK FIXME AM
+
 	}
 	else
 	{
@@ -314,12 +307,6 @@ void BK4819_InitAGC(const uint8_t agcType, ModulationMode_t modulation)
 			default:
 				return;
 		}
-		BK4819_WriteRegister(0x31,uVar1 & 0xFFFFFFFE); // HACK FIXME AM
-		BK4819_WriteRegister(0x42,0x6B5A);			   // HACK FIXME AM
-		BK4819_WriteRegister(0x2A,0x7400);			   // HACK FIXME AM
-		BK4819_WriteRegister(0x2B,0);				   // HACK FIXME AM
-		BK4819_WriteRegister(0x2F,0x9890);			   // HACK FIXME AM
-	
 	}
 		
 	// switched values to ones from 1o11 am_fix:
