@@ -54,7 +54,7 @@ static volatile uint8_t gRequestedSpectrumState = 0;
 #ifdef ENABLE_EEPROM_512K
   #define HISTORY_SIZE 100
 #else
-  #define HISTORY_SIZE 250
+  #define HISTORY_SIZE 1000
 #endif
 
 
@@ -559,10 +559,10 @@ static void DeleteHistoryItem(void) {
         if (indexFs == 0) return;
     }
 
-    uint8_t indexToDelete = historyListIndex;
+    uint16_t indexToDelete = historyListIndex;
 
     // Décaler tous les éléments suivants d'une position vers le haut
-    for (uint8_t i = indexToDelete; i < indexFs - 1; i++) {
+    for (uint16_t i = indexToDelete; i < indexFs - 1; i++) {
         HFreqs[i]       = HFreqs[i + 1];
         HCount[i]       = HCount[i + 1];
         HBlacklisted[i] = HBlacklisted[i + 1];
@@ -694,7 +694,7 @@ void ReadHistory(void) {
 
 void WriteHistory(void) {
     HistoryStruct History = {0};
-    for (uint8_t position = 0; position < indexFs; position++) {
+    for (uint16_t position = 0; position < indexFs; position++) {
         History.HFreqs = HFreqs[position];
         History.HCount = HCount[position];
         History.HBlacklisted = HBlacklisted[position];
@@ -809,7 +809,7 @@ static void FillfreqHistory(void)
     uint32_t f = peak.f;
     if (f == 0 || f < 1400000 || f > 130000000) return;
 
-    for (uint8_t i = 0; i < indexFs; i++) {
+    for (uint16_t i = 0; i < indexFs; i++) {
         if (HFreqs[i] == f) {
             // Gestion du compteur
             if (gCounthistory) {
@@ -823,10 +823,10 @@ static void FillfreqHistory(void)
             return;
         }
     }
-    uint8_t pos = 0;
+    uint16_t pos = 0;
     while (pos < indexFs && HFreqs[pos] < f) {pos++;}
 
-    for (uint8_t i = indexFs; i > pos; i--) {
+    for (uint16_t i = indexFs; i > pos; i--) {
         HFreqs[i]       = HFreqs[i - 1];
         HCount[i]       = HCount[i - 1];
         HBlacklisted[i] = HBlacklisted[i - 1];
@@ -2780,7 +2780,7 @@ static void NextHistoryScanStep() {
     uint16_t count = CountValidHistoryItems();
     if (count == 0) return;
 
-    uint8_t start = historyListIndex;
+    uint16_t start = historyListIndex;
     
     // Boucle pour trouver le prochain élément non blacklisté
     do {
@@ -2848,7 +2848,6 @@ static void UpdateListening(void) { // called every 10ms
     scanInfo.rssi = rssi;
     uint16_t count = GetStepsCount() + 1;
     uint16_t i = peak.i;
-    //static bool prev_gIspeak;
 
     // --- Mise à jour du buffer RSSI ---
     if (count > 128) {
@@ -2879,11 +2878,9 @@ static void UpdateListening(void) { // called every 10ms
         stableFreq = peak.f;
         stableCount = 0;
     }
-    //prev_gIspeak = gIsPeak;
-    if (isListening || SpectrumMonitor || WaitSpectrum) UpdateNoiseOff();
     UpdateNoiseOn();
-    //if (prev_gIspeak != gIsPeak) ToggleRX(gIsPeak);
-
+    if (isListening || SpectrumMonitor || WaitSpectrum) {UpdateNoiseOff();}
+        
     spectrumElapsedCount+=10; //in ms
     uint32_t maxCount = (uint32_t)MaxListenTime * 1000;
 
@@ -3121,16 +3118,11 @@ typedef struct {
 
 void LoadSettings(bool LNA)
 {
-  if(!IsVersionMatching()) ClearSettings();
-
   SettingsEEPROM  eepromData  = {0};
-  
-  // Lecture de toutes les données
   EEPROM_ReadBuffer(0x1D10, &eepromData, sizeof(eepromData));
   BK4819_WriteRegister(BK4819_REG_13, eepromData.R13);
-
   if (LNA) return;
-  
+  if(!IsVersionMatching()) ClearSettings();
   for (int i = 0; i < 15; i++) {
     settings.scanListEnabled[i] = (eepromData.scanListFlags >> i) & 0x01;
     SLRssiTriggerLevelUp[i] = eepromData.SLRssiTriggerLevelUp[i];
@@ -3344,12 +3336,12 @@ static void BuildValidScanListIndices() {
 }
 
 
-static void GetFilteredScanListText(uint8_t displayIndex, char* buffer) {
+static void GetFilteredScanListText(uint16_t displayIndex, char* buffer) {
     uint8_t realIndex = validScanListIndices[displayIndex];
     GetScanListLabel(realIndex, buffer);
 }
 
-static void GetParametersText(uint8_t index, char *buffer) {
+static void GetParametersText(uint16_t index, char *buffer) {
     switch(index) {
         case 0:
             sprintf(buffer, "Rssi Delay: %2d ms", DelayRssi);
@@ -3455,7 +3447,7 @@ static void GetParametersText(uint8_t index, char *buffer) {
     }
 }
 
-static void GetBandItemText(uint8_t index, char* buffer) {
+static void GetBandItemText(uint16_t index, char* buffer) {
     
     sprintf(buffer, "%d:%-12s%s", 
             index + 1, 
@@ -3463,7 +3455,7 @@ static void GetBandItemText(uint8_t index, char* buffer) {
             settings.bandEnabled[index] ? "*" : "");
 }
 
-static void GetHistoryItemText(uint8_t index, char* buffer) {
+static void GetHistoryItemText(uint16_t index, char* buffer) {
     char freqStr[10];
     char Name[12] = ""; // 10 chars max + 1 pour \0 + 1 pour sécurité
     uint8_t dcount;
@@ -3545,8 +3537,8 @@ static void GetHistoryItemText(uint8_t index, char* buffer) {
 
 
 //*******************************СПИСКИ*****************************// */
-static void RenderList(const char* title, uint8_t numItems, uint8_t selectedIndex, uint8_t scrollOffset,
-                      void (*getItemText)(uint8_t index, char* buffer)) {
+static void RenderList(const char* title, uint16_t numItems, uint16_t selectedIndex, uint16_t scrollOffset,
+                      void (*getItemText)(uint16_t index, char* buffer)) {
     // Clear display buffer
     memset(gFrameBuffer, 0, sizeof(gFrameBuffer));
     
@@ -3569,13 +3561,13 @@ static void RenderList(const char* title, uint8_t numItems, uint8_t selectedInde
     const uint8_t MAX_CHARS_PER_LINE = 18;
     // Draw visible items
     for (uint8_t i = 0; i < MAX_LINES; i++) {
-        uint8_t itemIndex = i + scrollOffset;
+        uint16_t itemIndex = i + scrollOffset;
         if (itemIndex >= numItems) break;
         
         char itemText[32];
         getItemText(itemIndex, itemText);
         
-        uint8_t lineNumber = FIRST_ITEM_LINE + i;
+        uint16_t lineNumber = FIRST_ITEM_LINE + i;
         
         // Wyrównanie maksymalnie do lewej
         if (itemIndex == selectedIndex) {
@@ -3650,11 +3642,11 @@ static void RenderHistoryList() {
       UI_PrintStringSmall(headerString, 1, LCD_WIDTH - 1, 0, 0);
     } else DrawMeter(0);
     
-    const uint8_t FIRST_ITEM_LINE = 1;
-    const uint8_t MAX_LINES = 6;
+    const uint16_t FIRST_ITEM_LINE = 1;
+    const uint16_t MAX_LINES = 6;
     
-    uint8_t scrollOffset = historyScrollOffset;
-    uint8_t selectedIndex = historyListIndex;
+    uint16_t scrollOffset = historyScrollOffset;
+    uint16_t selectedIndex = historyListIndex;
     
     // Adjust scroll offset if needed
     if (indexFs <= MAX_LINES) {
@@ -3667,13 +3659,13 @@ static void RenderHistoryList() {
     
     // Draw visible items
     for (uint8_t i = 0; i < MAX_LINES; i++) {
-        uint8_t itemIndex = i + scrollOffset;
+        uint16_t itemIndex = i + scrollOffset;
 
         if (itemIndex >= CountValidHistoryItems()) break;
         char itemText[32];
         GetHistoryItemText(itemIndex, itemText);
         //if (strcmp(itemText, "") == 0) continue;
-        uint8_t lineNumber = FIRST_ITEM_LINE + i;
+        uint16_t lineNumber = FIRST_ITEM_LINE + i;
         if (itemIndex == selectedIndex) {
             for (uint8_t x = 0; x < LCD_WIDTH; x++) {
                 for (uint8_t y = lineNumber * 8; y < (lineNumber + 1) * 8; y++) {
