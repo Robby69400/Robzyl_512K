@@ -73,8 +73,6 @@ void UI_DisplayStatus()
 		// Время TX — тем же шрифтом, что и батарея
 		sprintf(time_str, "%02u:%02u", txTimeSeconds / 60, txTimeSeconds % 60);
 		UI_PrintStringSmallBuffer(time_str, gStatusLine + TIME_POS_X);
-
-		txTimeSeconds++;  // инкремент каждые 500 мс
 	}
 
 	// === Индикатор приёма "RX" (двойной) ===
@@ -101,8 +99,6 @@ void UI_DisplayStatus()
 		// Время RX — тем же шрифтом, что и батарея
 		sprintf(time_str, "%02u:%02u", rxTimeSeconds / 60, rxTimeSeconds % 60);
 		UI_PrintStringSmallBuffer(time_str, gStatusLine + TIME_POS_X);
-
-		rxTimeSeconds++;
 	}
 
 	// === Индикатор Power Save "PS" (двойной, расстояние уменьшено на 1 пиксель) ===

@@ -94,7 +94,7 @@ const int CHANNEL_ONLY_SETTINGS[] = {
 	MENU_MEM_NAME,
 };
 
-const uint8_t FIRST_HIDDEN_MENU_ITEM = MENU_F1SHRT;
+const uint8_t FIRST_HIDDEN_MENU_ITEM = 0xFF; //unhide menus
 
 const char gSubMenu_TXP[][5] =
 {

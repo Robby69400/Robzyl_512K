@@ -18,14 +18,12 @@
  */
 
 #include "app/fm.h"
-
+#include "app/main.h"
 #include "app/scanner.h"
-
 #include "functions.h"
 #include "helper/battery.h"
 #include "misc.h"
 #include "settings.h"
-
 #include "driver/backlight.h"
 #include "bsp/dp32g030/gpio.h"
 #include "driver/gpio.h"
@@ -63,7 +61,7 @@ void SystickHandler(void)
 		DECREMENT(gSerialConfigCountDown_500ms);
 	}
 	
-	if ((gGlobalSysTickCounter % 10) == 0)
+	if ((gGlobalSysTickCounter % 20) == 0)
 	{
 		gNextTimeslice_display = true;
 	} 
@@ -71,6 +69,8 @@ void SystickHandler(void)
 	if ((gGlobalSysTickCounter % 100) == 0)
 	{
 		gNextTimeslice_1s = true;
+		txTimeSeconds++;
+		rxTimeSeconds++;
 	} 
 
 	if ((gGlobalSysTickCounter & 3) == 0) {

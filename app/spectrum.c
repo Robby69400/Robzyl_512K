@@ -54,7 +54,7 @@ static volatile uint8_t gRequestedSpectrumState = 0;
 #ifdef ENABLE_EEPROM_512K
   #define HISTORY_SIZE 100
 #else
-  #define HISTORY_SIZE 1000
+  #define HISTORY_SIZE 200
 #endif
 
 
@@ -2191,7 +2191,7 @@ static void OnKeyDown(uint8_t key) {
         
         // Теперь только 3 режима: 0 = FR, 1 = SL, 2 = BD
         // Максимум 2, при 3 — обратно на 0
-        if (Spectrum_state > 2) Spectrum_state = 0;
+        if (Spectrum_state > 4) Spectrum_state = 0;
 
         gRequestedSpectrumState = Spectrum_state;
         gSpectrumChangeRequested = true;
@@ -2906,7 +2906,7 @@ void APP_RunSpectrum(uint8_t Spectrum_state)
 {
     for (;;) {
         Mode mode;
-        if (Spectrum_state == 4) mode = FREQUENCY_MODE ;
+        if      (Spectrum_state == 4) mode = FREQUENCY_MODE ;
         else if (Spectrum_state == 3) mode = SCAN_RANGE_MODE ;
         else if (Spectrum_state == 2) mode = SCAN_BAND_MODE ;
         else if (Spectrum_state == 1) mode = CHANNEL_MODE ;

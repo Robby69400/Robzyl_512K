@@ -1,5 +1,5 @@
 AUTHOR_STRING := ""
-VERSION_STRING := V6_TURBO
+VERSION_STRING := V6.1_TURBO
 # compile options (see README.md for descriptions)
 # 0 = disable
 # 1 = enable
@@ -42,8 +42,8 @@ ENABLE_SCREENSHOT		  				:= 0
 ENABLE_SCANLIST_SHOW_DETAIL		   		:= 1
 ENABLE_EEPROM_512K				   		:= 0
 ENABLE_4732								:= 0
-
-
+ENABLE_DEV								:= 0
+ENABLE_RX_ONLY							:= 0
 
 #############################################################
 
@@ -354,6 +354,12 @@ endif
 
 ifeq ($(ENABLE_4732),1)
 	CFLAGS  += -DENABLE_4732
+endif
+ifeq ($(ENABLE_DEV),1)
+	CFLAGS  += -DENABLE_DEV
+endif
+ifeq ($(ENABLE_RX_ONLY),1)
+	CFLAGS  += -DENABLE_RX_ONLY
 endif
 
 LDFLAGS =
