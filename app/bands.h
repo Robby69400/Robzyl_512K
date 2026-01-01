@@ -227,6 +227,7 @@ static const bandparameters BParams[32] = {
     {"AIR",           11800000,         13790000,       S_STEP_25_0kHz,   MODULATION_AM},
     {"136-144MHz",    13600000,         14400000,       S_STEP_25_0kHz,   MODULATION_FM},
     {"2M (145MHz)",   14400000,         14650000,       S_STEP_12_5kHz,   MODULATION_FM},
+    {"2M (146MHz)",   14660000,         14790000,       S_STEP_12_5kHz,   MODULATION_FM},
     {"SECURITY",      14800000,         14900000,       S_STEP_5_0kHz,    MODULATION_FM},
     {"RAIL",          15172500,         15600000,       S_STEP_25_0kHz,   MODULATION_FM},
     {"MARINE",        15600000,         16327500,       S_STEP_25_0kHz,   MODULATION_FM},
