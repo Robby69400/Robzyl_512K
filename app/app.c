@@ -341,6 +341,7 @@ void APP_StartListening(FUNCTION_Type_t Function)
 	gVFO_RSSI_bar_level[(chan + 1) & 1u] = 0;
 
 	AUDIO_AudioPathOn();
+	rxTimeSeconds = 0; // TIMER RX FIX
 	//VFO sensitivity test KOLYAN ToggleAFDAC
   	uint32_t Reg = regs_cache[BK4819_REG_30];
   	Reg &= ~(1 << 9);
