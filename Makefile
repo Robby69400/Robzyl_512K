@@ -31,6 +31,7 @@ ENABLE_BYP_RAW_DEMODULATORS             := 0
 ENABLE_BLMIN_TMP_OFF                    := 0
 ENABLE_SCANNER							:= 1
 ENABLE_FR_BAND							:= 0
+ENABLE_BR_BAND							:= 0
 ENABLE_PL_BAND							:= 0
 ENABLE_RO_BAND							:= 0
 ENABLE_KO_BAND							:= 0
@@ -43,7 +44,6 @@ ENABLE_SCANLIST_SHOW_DETAIL		   		:= 1
 ENABLE_EEPROM_512K				   		:= 0
 ENABLE_4732								:= 0
 ENABLE_DEV								:= 0
-ENABLE_RX_ONLY							:= 0
 
 #############################################################
 
@@ -315,6 +315,9 @@ endif
 ifeq ($(ENABLE_FR_BAND),1)
 	CFLAGS  += -DENABLE_FR_BAND
 endif
+ifeq ($(ENABLE_BR_BAND),1)
+	CFLAGS  += -DENABLE_BR_BAND
+endif
 ifeq ($(ENABLE_PL_BAND),1)
 	CFLAGS  += -DENABLE_PL_BAND
 endif
@@ -357,9 +360,6 @@ ifeq ($(ENABLE_4732),1)
 endif
 ifeq ($(ENABLE_DEV),1)
 	CFLAGS  += -DENABLE_DEV
-endif
-ifeq ($(ENABLE_RX_ONLY),1)
-	CFLAGS  += -DENABLE_RX_ONLY
 endif
 
 LDFLAGS =

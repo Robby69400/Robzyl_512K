@@ -39,6 +39,7 @@ enum {
 	F_UNLOCK_PMR,
 	F_UNLOCK_136_500,
 	F_UNLOCK_ALL,	// enable TX on all frequenciese
+	F_LOCK_ALL,		// No TX
 	F_LOCK_LEN
 };
 

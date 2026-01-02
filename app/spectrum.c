@@ -1251,30 +1251,36 @@ static void DrawSpectrum()
 }
 
 static void RemoveTrailZeros(char *s) {
+    if (s[0] == '\0' || (s[0] == '0' && s[1] == '\0')) return;
     char *p = s; 
-    while (*p) p++;               // aller à la fin
-    while (p > s && *--p == '0') *p = 0;  // retire zéros inutiles
-    if (*p == '.') *p = 0;        // retire le '.' final
-
-    // cherche le point décimal pour tester les motifs de fin
-    for (p = s; *p && *p != '.'; p++);
-    if (!*p) return;
-    char *d = p + 1;
-    int n = 0; while (d[n]) n++;
-    if (n >= 2) {
-        char a = d[n-2], b = d[n-1];
-        if (a == '3' && (b == '3' || b == '4')) d[--n] = 0;
-        else if (a == '6' && (b == '6' || b == '7')) {
-            d[--n] = 0;
-            if (d[n-1] < '9') d[n-1]++; // arrondir léger
+    while (*p) p++;                     
+    while (p > s + 1 && *--p == '0') {
+        *p = 0;
+    }
+    if (p > s && *p == '.') {
+        *p = 0;
+    }
+    char *dot = s;
+    while (*dot && *dot != '.') dot++;
+    if (*dot == '.') {
+        char *d = dot + 1;
+        int n = 0; 
+        while (d[n]) n++;
+        if (n >= 2) {
+            char a = d[n-2], b = d[n-1];
+            if (a == '3' && (b == '3' || b == '4')) {
+                d[n-1] = 0;
+            }
+            else if (a == '6' && (b == '6' || b == '7')) {
+                d[n-1] = 0;
+                if (d[n-2] < '9') d[n-2]++;
+            }
         }
     }
-
-    // retire à nouveau les zéros et '.' finaux si restants
     p = s;
     while (*p) p++;
-    while (p > s && *--p == '0') *p = 0;
-    if (*p == '.') *p = 0;
+    while (p > s + 1 && *--p == '0') *p = 0;
+    if (p > s && *p == '.') *p = 0;
 }
 
 

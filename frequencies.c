@@ -140,6 +140,9 @@ int TX_freq_check(const uint32_t Frequency)
 		case F_UNLOCK_ALL:
 				return 0;
 			break;
+		case F_LOCK_ALL:
+				return -1;
+			break;
 	}
 
 	// dis-allowed TX frequency

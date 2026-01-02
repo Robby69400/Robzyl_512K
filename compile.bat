@@ -29,7 +29,6 @@ if exist "%INDEX_FILE%" (
 del .\compiled-firmware\*.bin
 docker build -t uvk5 .
 docker run --rm -v %CD%\compiled-firmware:/app/compiled-firmware uvk5 /bin/bash -c "cd /app && make clean && make -s ENABLE_DEV=1 ENABLE_FR_BAND=1 ENABLE_EEPROM_512K=1 TARGET=robzyl512k_beta.fr && cp *packed.bin compiled-firmware/"
-docker run --rm -v %CD%\compiled-firmware:/app/compiled-firmware uvk5 /bin/bash -c "cd /app &&               make -s ENABLE_RX_ONLY=1 ENABLE_FR_BAND=1 ENABLE_EEPROM_512K=0 TARGET=robzyl8k_RX_beta.fr && cp *packed.bin compiled-firmware/"
 docker run --rm -v %CD%\compiled-firmware:/app/compiled-firmware uvk5 /bin/bash -c "cd /app &&               make -s ENABLE_DEV=1 ENABLE_FR_BAND=1 ENABLE_EEPROM_512K=0 TARGET=robzyl8k_beta.fr   && cp *packed.bin compiled-firmware/"
 docker run --rm -v %CD%\compiled-firmware:/app/compiled-firmware uvk5 /bin/bash -c "cd /app &&               make -s ENABLE_DEV=1 ENABLE_FR_BAND=1 ENABLE_EEPROM_512K=1 TARGET=robzyl512k_beta.ko && cp *packed.bin compiled-firmware/"
 time /t
