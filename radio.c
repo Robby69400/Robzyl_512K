@@ -697,7 +697,7 @@ void RADIO_SetVfoState(VfoState_t State)
 		gVFOStateResumeCountdown_500ms = vfo_state_resume_countdown_500ms;
 	}
 
-	gUpdateDisplay = true;
+	
 }
 
 void RADIO_PrepareTX(void)

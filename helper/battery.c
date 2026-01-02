@@ -123,7 +123,7 @@ void BATTERY_GetReadings()
 
 
 	if ((gScreenToDisplay == DISPLAY_MENU) && UI_MENU_GetCurrentMenuId() == MENU_VOL)
-		gUpdateDisplay = true;
+		
 
 	if (PreviousBatteryLevel != gBatteryDisplayLevel)
 	{
@@ -141,7 +141,7 @@ void BATTERY_GetReadings()
 		}
 		
 		if(!gLowBatteryConfirmed)
-			gUpdateDisplay = true;
+			
 
 		lowBatteryCountdown = 0;
 	}

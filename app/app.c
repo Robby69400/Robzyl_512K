@@ -123,7 +123,7 @@ static void CheckForIncoming(void)
 	if (gCurrentFunction != FUNCTION_INCOMING)
 			{
 				FUNCTION_Select(FUNCTION_INCOMING);
-				//gUpdateDisplay = true;
+				//
 
 				UpdateRSSI();
 				gUpdateRSSI = true;
@@ -159,7 +159,7 @@ static void HandleIncoming(void)
 
 		if (gCurrentFunction != FUNCTION_FOREGROUND) {
 			FUNCTION_Select(FUNCTION_FOREGROUND);
-			gUpdateDisplay = true;
+			
 		}
 		return;
 	}
@@ -284,7 +284,7 @@ Skip:
 
 		case END_OF_RX_MODE_END:
 			RADIO_SetupRegisters(true);
-			gUpdateDisplay = true;
+			
 			break;
 
 		case END_OF_RX_MODE_TTE:
@@ -383,7 +383,7 @@ void APP_StartListening(FUNCTION_Type_t Function)
 			GUI_SelectNextDisplay(DISPLAY_MAIN);
 	}
 	else
-		gUpdateDisplay = true;
+		
 	
 	BK4819_InitAGC(gEeprom.RX_AGC, gTxVfo->Modulation);
 	
@@ -723,14 +723,10 @@ void APP_TimeSlice10ms(void)
 				UI_DisplayAudioBar();
 	}
 
-	if (gUpdateDisplay)
-	{
-		gUpdateDisplay = false;
-		GUI_DisplayScreen();
-	}
 	static uint8_t DisplayStatusCountdown = 20;
 	if (!DisplayStatusCountdown--){
 		UI_DisplayStatus();
+		GUI_DisplayScreen();
 		DisplayStatusCountdown = 20;
 	}
 
@@ -765,8 +761,6 @@ void cancelUserInputModes(void)
 		gWasFKeyPressed     = false;
 		gInputBoxIndex      = 0;
 		gKeyInputCountdown  = 0;
-		       
-		gUpdateDisplay      = true;
 	}
 }
 
@@ -796,11 +790,13 @@ void validateChannelInput(void)
 			gEeprom.ScreenChannel = Channel;
 			gRequestSaveVFO       = true;
 			gVfoConfigureMode     = VFO_CONFIGURE_RELOAD;
+			gRequestSaveChannel = 1;
+    		gPttWasReleased       = true;
 		}
 		
 		// Réinitialiser dans tous les cas
 		gInputBoxIndex = 0;
-		gUpdateDisplay = true;
+		
 	}
 }
 
@@ -811,7 +807,7 @@ void APP_TimeSlice500ms(void)
 
 	if (gKeypadLocked > 0)
 		if (--gKeypadLocked == 0)
-			gUpdateDisplay = true;
+			
 
 	if (gKeyInputCountdown > 0)
 	{
@@ -908,16 +904,10 @@ if (gBacklightCountdown > 0 && !gBacklightAlwaysOn &&
 				{
 					BACKLIGHT_TurnOff();	// turn the backlight OFF
 				}
-
 				gWasFKeyPressed  = false;
 				gInputBoxIndex   = 0;
-
 				gAskToSave       = false;
 				gAskToDelete     = false;
-
-				    
-				gUpdateDisplay   = true;
-
 				{
 					GUI_DisplayType_t disp = DISPLAY_INVALID;
 
@@ -1067,7 +1057,7 @@ static void ProcessKey(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 		// close low battery popup
 		if(Key == KEY_EXIT && bKeyPressed && lowBatPopup) {
 			gLowBatteryConfirmed = true;
-			gUpdateDisplay = true;
+			
 			return;
 		}		
 
@@ -1080,7 +1070,7 @@ static void ProcessKey(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 			if (!bKeyHeld)
 			{	// keypad is locked, tell the user
 				gKeypadLocked  = 4;      // 2 seconds
-				gUpdateDisplay = true;
+				
 				return;
 			}
 		}
@@ -1090,7 +1080,7 @@ static void ProcessKey(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 
 			// keypad is locked, tell the user
 			gKeypadLocked  = 4;          // 2 seconds
-			gUpdateDisplay = true;
+			
 			return;
 		}
 	}
@@ -1311,7 +1301,7 @@ Skip:
 	GUI_SelectNextDisplay(gRequestDisplayScreen);
 	gRequestDisplayScreen = DISPLAY_INVALID;
 
-	gUpdateDisplay = true;
+	
 }
 
 static void FlashlightTimeSlice()

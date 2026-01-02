@@ -244,7 +244,6 @@ extern uint8_t               gMenuListCount;
 
 extern uint8_t               gFSKWriteIndex;
 extern volatile bool         gNextTimeslice;
-extern bool                  gUpdateDisplay;
 extern bool                  gF_LOCK;
 extern uint8_t               gShowChPrefix;
 extern volatile uint8_t      gFoundCDCSSCountdown_10ms;

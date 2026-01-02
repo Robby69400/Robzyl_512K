@@ -151,7 +151,7 @@ done:
 	if (gScreenToDisplay != DISPLAY_MENU && gRequestDisplayScreen != DISPLAY_FM)     // 1of11 .. don't close the menu
 		gRequestDisplayScreen = DISPLAY_MAIN;
 	  
-	gUpdateDisplay = true;
+	
 
 	//done tx - restore squelch here
 	RADIO_ConfigureSquelchAndOutputPower(gCurrentVfo);

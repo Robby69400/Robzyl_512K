@@ -280,10 +280,10 @@ void SCANNER_TimeSlice500ms(void)
 
 			
 		}
-		gUpdateDisplay = true;
+		
 	}
 	else if(gCssBackgroundScan) {
-		gUpdateDisplay = true;
+		
 	}
 }
 

@@ -78,7 +78,5 @@ void GUI_SelectNextDisplay(GUI_DisplayType_t Display)
 		gWasFKeyPressed      = false;
 		        
 	}
-
 	gScreenToDisplay = Display;
-	gUpdateDisplay   = true;
 }

@@ -32,7 +32,7 @@ const uint8_t     vfo_state_resume_countdown_500ms =  2500 / 500;  // 2.5 second
 const uint8_t     menu_timeout_500ms               =  20000 / 500;  // 20 seconds
 const uint16_t    menu_timeout_long_500ms          = 120000 / 500;  // 2 minutes
 
-const uint8_t     key_input_timeout_500ms          =  1500 / 500;  // 3 seconds
+const uint8_t     key_input_timeout_500ms          =  4;  // 2 seconds
 
 const uint16_t    key_repeat_delay_10ms            =   400 / 10;   // 400ms
 const uint16_t    key_repeat_10ms                  =    80 / 10;   // 80ms .. MUST be less than 'key_repeat_delay'
@@ -158,13 +158,8 @@ bool              gPttIsPressed;
 uint8_t           gPttDebounceCounter;
 uint8_t           gMenuListCount;
 uint8_t           gFSKWriteIndex;
-
-bool              gUpdateDisplay;
-
 bool              gF_LOCK = false;
-
 uint8_t           gShowChPrefix;
-
 volatile bool     gNextTimeslice;
 volatile uint8_t  gFoundCDCSSCountdown_10ms;
 volatile uint8_t  gFoundCTCSSCountdown_10ms;

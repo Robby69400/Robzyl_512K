@@ -603,7 +603,7 @@ static void DeleteHistoryItem(void) {
     // Mettre à jour l'affichage
     
     ShowOSDPopup("Deleted");
-    gUpdateDisplay = true;
+    
 }
 
 
@@ -2214,7 +2214,7 @@ static void OnKeyDown(uint8_t key) {
         newScanStart = true;
         ToggleRX(false);  // выкл RX на время смены
 
-        gUpdateDisplay = true;  // обновляем индикатор режима
+          // обновляем индикатор режима
         break;
   
     case KEY_SIDE1:

@@ -87,7 +87,7 @@ static void processFKeyFunction(const KEY_Code_t Key, const bool beep)
 						RADIO_SetupRegisters(true);
 						
 						gRequestSaveChannel = 1;
-						gUpdateDisplay = true;
+						
 					}
 				}
 				
@@ -169,7 +169,7 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 								RADIO_SetupRegisters(true);
 								
 								gRequestSaveChannel = 1;
-								gUpdateDisplay = true;
+								
 							}
 						}
 						
@@ -204,7 +204,7 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
     if (bKeyHeld && bKeyPressed)  // длинное нажатие
     {
         COMMON_SwitchVFOMode();   // ← переключаем MR ↔ VFO
-        gUpdateDisplay = true;
+        
         gWasFKeyPressed = false;
         return;
     }
@@ -216,7 +216,7 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 					gTxVfo->CHANNEL_BANDWIDTH = ACTION_NextBandwidth(gTxVfo->CHANNEL_BANDWIDTH, gTxVfo->Modulation != MODULATION_AM, 0);
 					gRequestSaveChannel = 1;
 					RADIO_SetupRegisters(true);
-					gUpdateDisplay = true;
+					
 					break;
 				case KEY_5:
 					// Длинное 5 — смена шага по кругу
@@ -224,21 +224,21 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 						gTxVfo->STEP_SETTING = 0;
 					gRequestSaveChannel = 1;
 					RADIO_SetupRegisters(true);
-					gUpdateDisplay = true;
+					
 					break;
 				case KEY_6:
 					// Длинное 6 — смена мощности
 					ACTION_Power();
 					gRequestSaveChannel = 1;
 					RADIO_SetupRegisters(true);
-					gUpdateDisplay = true;
+					
 					break;
 				case KEY_0:
 					// Длинное 0 — смена демодуляции
 					ACTION_SwitchDemodul();
 					gRequestSaveChannel = 1;
 					RADIO_SetupRegisters(true);
-					gUpdateDisplay = true;
+					
 					break;
 				case KEY_9:
 					// Длинное 9 — toggle "подсветка всегда включена" (перенесено с 8)
@@ -263,7 +263,7 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 							}
 						}
 					}
-					gUpdateDisplay = true;
+					
 					break;
 				default:
 					break;
@@ -319,6 +319,8 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 				gEeprom.ScreenChannel = Channel;
 				gRequestSaveVFO = true;
 				gVfoConfigureMode = VFO_CONFIGURE_RELOAD;
+				gRequestSaveChannel = 1;
+    			gPttWasReleased       = true;
 				gInputBoxIndex = 0;
 				return;
 			}
@@ -406,7 +408,7 @@ static void MAIN_Key_UP_DOWN(bool bKeyPressed, bool bKeyHeld, int8_t Direction)
         gTxVfo->freq_config_TX.Frequency = frequency + gTxVfo->TX_OFFSET_FREQUENCY;  // если есть offset
         BK4819_SetFrequency(frequency);
         gRequestSaveChannel = 1;
-        gUpdateDisplay = true;
+        
         return;
     }
 
@@ -419,7 +421,6 @@ static void MAIN_Key_UP_DOWN(bool bKeyPressed, bool bKeyHeld, int8_t Direction)
     gEeprom.ScreenChannel = Next;
     gRequestSaveVFO       = true;
     gVfoConfigureMode     = VFO_CONFIGURE_RELOAD;
-    gUpdateDisplay        = true;
     gPttWasReleased       = true;
 }
 
@@ -431,7 +432,7 @@ void MAIN_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 		{
 			gWasFKeyPressed = true;
 			gKeyInputCountdown = 0;
-			gUpdateDisplay = true;
+			
 		}
 		return;
 	}
@@ -485,7 +486,7 @@ void MAIN_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 				}
 
 				gRequestSaveSettings = true;
-				gUpdateDisplay = true;
+				
 
 				RADIO_ConfigureSquelchAndOutputPower(gTxVfo);
 				RADIO_ApplySquelch();
