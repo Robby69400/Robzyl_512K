@@ -751,6 +751,6 @@ static const vertical_dashed_t mr_vlines[] = {
 
 		// АУДИОБАР — рисуем ПОСЛЕДНИМ, чтобы был поверх всех надписей
 	UI_DisplayAudioBar();
+	DisplayRSSIBar(gCurrentRSSI);
 
-	ST7565_BlitFullScreen();
 }

@@ -43,9 +43,9 @@ void GUI_DisplayScreen(void)
 			UI_DisplayMain();
 			break;
 
-			case DISPLAY_FM:
-				UI_DisplayFM();
-				break;
+		case DISPLAY_FM:
+			UI_DisplayFM();
+			break;
 		
 		case DISPLAY_MENU:
 			UI_DisplayMenu();

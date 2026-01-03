@@ -76,43 +76,6 @@ static void UpdateRSSI()
     gCurrentRSSI = rssi;
 }
 
-//************************************ВЫВОД RSSI S-MET ****** REMOVE TO */
-void DrawNumeric(void)
-{
-    /*int pos = 0;
-	int len = 0;
-	uint32_t cdcssFreq;
-	uint16_t ctcssFreq;
-    uint8_t code = 0;
-	char buf[32]= "";
-
-	if(gCurrentFunction == FUNCTION_RECEIVE || gCurrentFunction == FUNCTION_MONITOR || gCurrentFunction == FUNCTION_INCOMING) {
-		int16_t afcVal = BK4819_GetAFCValue();
-    	memset(&gFrameBuffer[0][0], 0, 2 * 128);
-		if (afcVal) {
-			len = sprintf(buf, "AFC:%+d ", afcVal);
-			pos += len;
-		}
-		BK4819_WriteRegister(BK4819_REG_51,
-		BK4819_REG_51_ENABLE_CxCSS         |
-		BK4819_REG_51_AUTO_CDCSS_BW_ENABLE |
-		BK4819_REG_51_AUTO_CTCSS_BW_ENABLE |
-		(51u << BK4819_REG_51_SHIFT_CxCSS_TX_GAIN1));
-
-		BK4819_CssScanResult_t scanResult = BK4819_GetCxCSSScanResult(&cdcssFreq, &ctcssFreq);
-		if (scanResult == BK4819_CSS_RESULT_CTCSS) {
-				code = DCS_GetCtcssCode(ctcssFreq);
-				sprintf(&buf[pos],"%u.%uHz", CTCSS_Options[code] / 10, CTCSS_Options[code] % 10);
-
-			}
-   		else if (scanResult == BK4819_CSS_RESULT_CDCSS) {
-				code = DCS_GetCdcssCode(cdcssFreq);
-				if (code != 0xFF) sprintf(&buf[pos],"D%03oN", DCS_Options[code]);
-		}
-	UI_PrintStringSmall(buf, 1, 0, 0, 0);
-	}*/
-}
-
 static void CheckForIncoming(void)
 {
 	if (!g_SquelchLost)
@@ -138,17 +101,6 @@ static void CheckForIncoming(void)
 		gUpdateRSSI = true;
 	}
 }
-
-
-void APP_TimeSliceScope(void) {
-	if (gScreenToDisplay == DISPLAY_MAIN)
-	{
-	DrawNumeric();
-	DisplayRSSIBar(gCurrentRSSI);
-	ST7565_BlitFullScreen();
-	}
-}
-
 
 
 static void HandleIncoming(void)
@@ -472,7 +424,7 @@ void APP_Update(void)
 		gFlagEndTransmission = true;
 		APP_EndTransmission(true);
 		RADIO_SetVfoState(VFO_STATE_TIMEOUT);
-		GUI_DisplayScreen();
+		//GUI_DisplayScreen();
 	}
 
 	if (gReducedService)
@@ -723,11 +675,12 @@ void APP_TimeSlice10ms(void)
 				UI_DisplayAudioBar();
 	}
 
-	static uint8_t DisplayStatusCountdown = 20;
+	static uint8_t DisplayStatusCountdown = 15;
 	if (!DisplayStatusCountdown--){
 		UI_DisplayStatus();
 		GUI_DisplayScreen();
-		DisplayStatusCountdown = 20;
+		DisplayStatusCountdown = 15;
+		ST7565_BlitFullScreen();
 	}
 
 	#ifdef ENABLE_SCREENSHOT

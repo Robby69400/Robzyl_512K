@@ -54,7 +54,7 @@ static volatile uint8_t gRequestedSpectrumState = 0;
 #ifdef ENABLE_EEPROM_512K
   #define HISTORY_SIZE 100
 #else
-  #define HISTORY_SIZE 200
+  #define HISTORY_SIZE 500
 #endif
 
 
@@ -1250,39 +1250,18 @@ static void DrawSpectrum()
         // === КОНЕЦ ПИКОВ С ОТСТУПАМИ ===    
 }
 
-static void RemoveTrailZeros(char *s) {
-    if (s[0] == '\0' || (s[0] == '0' && s[1] == '\0')) return;
-    char *p = s; 
-    while (*p) p++;                     
-    while (p > s + 1 && *--p == '0') {
-        *p = 0;
-    }
-    if (p > s && *p == '.') {
-        *p = 0;
-    }
-    char *dot = s;
-    while (*dot && *dot != '.') dot++;
-    if (*dot == '.') {
-        char *d = dot + 1;
-        int n = 0; 
-        while (d[n]) n++;
-        if (n >= 2) {
-            char a = d[n-2], b = d[n-1];
-            if (a == '3' && (b == '3' || b == '4')) {
-                d[n-1] = 0;
-            }
-            else if (a == '6' && (b == '6' || b == '7')) {
-                d[n-1] = 0;
-                if (d[n-2] < '9') d[n-2]++;
-            }
+/* static void RemoveTrailZeros(char *s) {
+    char *p;
+    if (strchr(s, '.')) {
+        p = s + strlen(s) - 1;
+        while (p > s && *p == '0') {
+            *p-- = '\0';
+        }
+        if (*p == '.') {
+            *p = '\0';
         }
     }
-    p = s;
-    while (*p) p++;
-    while (p > s + 1 && *--p == '0') *p = 0;
-    if (p > s && *p == '.') *p = 0;
-}
-
+} */
 
 //******************************СТАТУСБАР************** */
 static void DrawStatus() {
@@ -1400,7 +1379,7 @@ switch(SpectrumMonitor) {
 // ------------------ Frequency string ------------------
 static void FormatFrequency(uint32_t f, char *buf, size_t buflen) {
     snprintf(buf, buflen, "%u.%05u", f / 100000, f % 100000);
-    RemoveTrailZeros(buf);
+    //RemoveTrailZeros(buf);
 }
 
 // ------------------ CSS detection ------------------
@@ -3278,7 +3257,7 @@ static bool GetScanListLabel(uint8_t scanListIndex, char* bufferOut) {
         uint32_t freq = gMR_ChannelFrequencyAttributes[first_channel].Frequency;
         char freqStr[12];
         sprintf(freqStr, "%u.%05u", freq / 100000, freq % 100000);
-        RemoveTrailZeros(freqStr);
+        //RemoveTrailZeros(freqStr);
         sprintf(bufferOut, "%-2d %-13s", scanListIndex + 1, freqStr);
     } else {
         sprintf(bufferOut, "%-2d %-13s", scanListIndex + 1, channel_name);
@@ -3426,7 +3405,7 @@ static void GetHistoryItemText(uint16_t index, char* buffer) {
     uint32_t f = HFreqs[index];
     buffer[0] = '\0'; 
     snprintf(freqStr, sizeof(freqStr), "%u.%05u", f / 100000, f % 100000);
-    RemoveTrailZeros(freqStr);
+    //RemoveTrailZeros(freqStr);
     
     uint16_t Hchannel = BOARD_gMR_fetchChannel(f);
     
@@ -3691,7 +3670,7 @@ static void RenderScanListChannelsDoubleLines(const char* title, uint8_t numItem
         uint32_t freq = gMR_ChannelFrequencyAttributes[channelIndex].Frequency;
         char freqStr[16];
         sprintf(freqStr, " %u.%05u", freq/100000, freq%100000);
-        RemoveTrailZeros(freqStr);
+        //RemoveTrailZeros(freqStr);
         
         uint8_t line1 = 1 + i * 2;
         uint8_t line2 = 2 + i * 2;

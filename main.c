@@ -173,11 +173,7 @@ void Main(void)
 			APP_TimeSlice10ms();
 			gNextTimeslice = false;
 		}
-		if (gNextTimeslice_vfo_nums)
-		{
-			APP_TimeSliceScope();
-			gNextTimeslice_vfo_nums = false;
-		}
+
 		if (gNextTimeslice_500ms)
 		{
 			APP_TimeSlice500ms();

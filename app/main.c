@@ -499,27 +499,16 @@ void MAIN_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 				txTimeSeconds = 0;  // сбрасываем при каждом нажатии (начало новой передачи)
 			}
 			isTxActive = bKeyPressed;
-
-			// === СБРОС ТАЙМЕРА RX ПРИ ОТПУСКАНИИ PTT (начало приёма) ===
-			if (!bKeyPressed && isTxActive) {
-				rxTimeSeconds = 0;  // сбрасываем RX при переходе в приём
-			}
 			break;
 
 		default:
 			break;
 			
 	}
-// === ДОБАВЬ ЭТОТ БЛОК В КОНЕЦ ФУНКЦИИ ===
-    // Отслеживаем реальное состояние радиостанции (TX / RX)
     if (gCurrentFunction != lastRadioState) {
         if (gCurrentFunction == FUNCTION_TRANSMIT) {
-            txTimeSeconds = 0;  // новая передача
-        }
-        if (gCurrentFunction == FUNCTION_RECEIVE) {
-            rxTimeSeconds = 0;  // новый приём (шумоподавитель открылся)
+            txTimeSeconds = 0;
         }
         lastRadioState = gCurrentFunction;
     }
-    // === КОНЕЦ ДОБАВЛЕННОГО БЛОКА ===
 }

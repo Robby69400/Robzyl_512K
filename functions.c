@@ -27,7 +27,6 @@
 #include "dcs.h"
 #include "driver/backlight.h"
 #include "driver/bk1080.h"
-
 #include "driver/bk4819.h"
 #include "driver/gpio.h"
 #include "driver/system.h"
@@ -40,6 +39,7 @@
 #include "settings.h"
 #include "ui/status.h"
 #include "ui/ui.h"
+#include "app/main.h"
 
 
 FUNCTION_Type_t gCurrentFunction;
@@ -108,6 +108,7 @@ void FUNCTION_Select(FUNCTION_Type_t Function)
 
 		case FUNCTION_INCOMING:
 		case FUNCTION_RECEIVE:
+			rxTimeSeconds = 0;
 			break;
 
 		case FUNCTION_POWER_SAVE:
@@ -132,7 +133,7 @@ void FUNCTION_Select(FUNCTION_Type_t Function)
 			if (gFmRadioMode)BK1080_Init(0, false);
 			
 
-			GUI_DisplayScreen();
+			//GUI_DisplayScreen();
 
 			RADIO_SetTxParameters();
 
