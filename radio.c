@@ -535,10 +535,8 @@ void RADIO_SetupRegisters(bool switchToForeground)
     ( 0u << 10) |     // AF Rx Gain-1 = 0dB
     (62u <<  4) |     // AF Rx Gain-2 = Max
     (12u <<  0));     // AF DAC Gain = 12 (loud and clear)
-	BK4819_InitAGC(gEeprom.RX_AGC, gTxVfo->Modulation);
-	// Принудительно fast AGC для лучшего приёма слабых сигналов//NEW IGGI ЧИНИМ ВФО
-	BK4819_InitAGC(RX_AGC_FAST, gTxVfo->Modulation);
-
+	BK4819_InitAGC(gTxVfo->Modulation);
+	
 	uint16_t InterruptMask = BK4819_REG_3F_SQUELCH_FOUND | BK4819_REG_3F_SQUELCH_LOST;
 
 		if (gTxVfo->Modulation == MODULATION_FM)

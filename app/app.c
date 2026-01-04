@@ -337,7 +337,7 @@ void APP_StartListening(FUNCTION_Type_t Function)
 	else
 		
 	
-	BK4819_InitAGC(gEeprom.RX_AGC, gTxVfo->Modulation);
+	BK4819_InitAGC(gTxVfo->Modulation);
 	
 }
 

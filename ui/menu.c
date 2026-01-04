@@ -44,7 +44,6 @@ const t_menu_item MenuList[] =
 	{"Sql",     MENU_SQL           },
 	{"Bandw",   MENU_W_N           },
 	{"Demodu",  MENU_AM            },
-	{"RxAGC",   MENU_RX_AGC        },
 	{"Roger",   MENU_ROGER         },
 	{"Compnd",  MENU_COMPAND       },
 	{"ScraEn",  MENU_SCREN         }, 
@@ -123,12 +122,6 @@ const char gSubMenu_SAVE[][4] =
 	"67%",
 	"75%",
 	"80%"
-};
-
-const char gSubMenu_RX_AGC[][6] =
-{
-	"SLOW",
-	"FAST"
 };
 
 const char gSubMenu_TOT[][7] =
@@ -530,10 +523,6 @@ void UI_DisplayMenu(void)
 				strcpy(String, gSubMenu_TOT[gSubMenuSelection]);
 				break;
 				
-			case MENU_RX_AGC:
-				strcpy(String, gSubMenu_RX_AGC[gSubMenuSelection]);
-				break;
-	
 			case MENU_BAT_TXT:
 				strcpy(String, gSubMenu_BAT_TXT[gSubMenuSelection]);
 				break;

@@ -30,54 +30,48 @@ typedef struct {
 } t_menu_item;
 
 enum
-{
-	MENU_SQL = 0,
-	MENU_STEP,
-	MENU_TXP,
-	MENU_R_DCS,
-	MENU_R_CTCS,
-	MENU_T_DCS,
-	MENU_T_CTCS,
-	MENU_SFT_D,
-	MENU_OFFSET,
-	MENU_RX_OFFSET,
-	MENU_TOT,
-	MENU_W_N,
-	MENU_SCR,
-	MENU_BCL,
-	MENU_MEM_CH,
-	MENU_DEL_CH,
-	MENU_MEM_NAME,
-	MENU_SAVE,
-	MENU_ABR,
-	MENU_ABR_ON_TX_RX,
-	MENU_ABR_MIN,
-	MENU_ABR_MAX,
-	MENU_AUTOLK,
-	MENU_S_LIST,
-	MENU_SQL_TONE,
-	MENU_MIC,
-	MENU_COMPAND,
-	MENU_UPCODE,
-	MENU_DWCODE,
-	MENU_PONMSG,
-	MENU_ROGER,
-	MENU_VOL,
-	MENU_BAT_TXT,
-	MENU_AM,
-	MENU_RESET,
-	MENU_F_LOCK,
-	MENU_SCREN,
-#ifdef ENABLE_F_CAL_MENU
-	MENU_F_CALI,  // reference xtal calibration
-#endif
-	MENU_BATCAL,  // battery voltage calibration
-	MENU_F1SHRT,
-	MENU_F1LONG,
-	MENU_F2SHRT,
-	MENU_F2LONG,
-	MENU_BATTYP,
-	MENU_RX_AGC
+{  
+	MENU_STEP = 0      ,
+	MENU_SQL           ,
+	MENU_W_N           ,
+	MENU_AM            ,
+	MENU_ROGER         ,
+	MENU_COMPAND       ,
+	MENU_SCREN         , 
+	MENU_SCR           ,
+	MENU_S_LIST        , 
+	MENU_TOT           ,
+	MENU_MIC           ,	
+	MENU_ABR           ,
+	MENU_ABR_MIN       ,
+	MENU_ABR_MAX       ,
+	MENU_ABR_ON_TX_RX  ,
+	MENU_SQL_TONE      ,
+	MENU_R_DCS         ,
+	MENU_R_CTCS        ,
+	MENU_T_DCS         ,
+	MENU_T_CTCS        ,
+	MENU_SFT_D         ,
+	MENU_OFFSET        ,
+	MENU_RX_OFFSET     ,
+	MENU_SAVE          ,
+	MENU_MEM_CH        ,
+	MENU_F1SHRT        ,
+	MENU_F1LONG        ,
+	MENU_F2SHRT        ,
+	MENU_F2LONG        ,
+	MENU_BATCAL        ,
+	MENU_BATTYP        ,
+	MENU_TXP           ,
+	MENU_BCL           ,	
+	MENU_VOL           ,
+	MENU_PONMSG        ,
+	MENU_AUTOLK        ,
+	MENU_BAT_TXT       ,	
+	MENU_DEL_CH        ,
+	MENU_MEM_NAME      ,	
+	MENU_RESET         ,
+	MENU_F_LOCK        
 };
 
 extern const uint8_t FIRST_HIDDEN_MENU_ITEM;
@@ -98,7 +92,6 @@ extern const char        gSubMenu_RX_TX[4][6];
 extern const char        gSubMenu_BAT_TXT[3][8];
 extern const char 		 gSubMenu_BATTYP[2][9];
 extern const char        gSubMenu_SCRAMBLER[11][7];
-extern const char        gSubMenu_RX_AGC[2][6];
 typedef struct {char* name; uint8_t id;} t_sidefunction;
 extern const uint8_t 		 gSubMenu_SIDEFUNCTIONS_size;
 extern const t_sidefunction* gSubMenu_SIDEFUNCTIONS;

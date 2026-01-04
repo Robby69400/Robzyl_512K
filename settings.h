@@ -62,12 +62,6 @@ enum {
 };
 
 enum {
-	RX_AGC_SLOW,
-	RX_AGC_FAST,
-	RX_AGC_LEN
-};
-
-enum {
 	ACTION_OPT_NONE = 0,
 	ACTION_OPT_FLASHLIGHT,
 	ACTION_OPT_TOGGLE_PTT,
@@ -170,7 +164,6 @@ typedef struct {
 	uint8_t               BACKLIGHT_MAX;
 	BATTERY_Type_t		  BATTERY_TYPE;
 	uint32_t              RX_OFFSET;
-	uint8_t				  RX_AGC;
 	uint16_t              SQL_TONE;
 } EEPROM_Config_t;
 

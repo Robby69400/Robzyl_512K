@@ -1250,7 +1250,7 @@ static void DrawSpectrum()
         // === КОНЕЦ ПИКОВ С ОТСТУПАМИ ===    
 }
 
-/* static void RemoveTrailZeros(char *s) {
+static void RemoveTrailZeros(char *s) {
     char *p;
     if (strchr(s, '.')) {
         p = s + strlen(s) - 1;
@@ -1261,7 +1261,7 @@ static void DrawSpectrum()
             *p = '\0';
         }
     }
-} */
+}
 
 //******************************СТАТУСБАР************** */
 static void DrawStatus() {
@@ -1379,7 +1379,7 @@ switch(SpectrumMonitor) {
 // ------------------ Frequency string ------------------
 static void FormatFrequency(uint32_t f, char *buf, size_t buflen) {
     snprintf(buf, buflen, "%u.%05u", f / 100000, f % 100000);
-    //RemoveTrailZeros(buf);
+    RemoveTrailZeros(buf);
 }
 
 // ------------------ CSS detection ------------------
@@ -1436,24 +1436,25 @@ static void DrawF(uint32_t f) {
     int len = 0;
     int pos = 0;
     char prefix[9] = "";
-    
+    if (gNextTimeslice_1s){
+        ReadChannelName(channelFd,channelName);
+        gNextTimeslice_1s = 0;
+    }
     if (appMode == SCAN_BAND_MODE) {
         snprintf(prefix, sizeof(prefix), "B%u ", bl + 1);
-        snprintf(line2, sizeof(line2), "%-3s%s", prefix, BParams[bl].BandName);
+        if (isListening)
+             sprintf(line2,"%-3s%s ", prefix, channelName);
+        else snprintf(line2, sizeof(line2), "%-3s%s", prefix, BParams[bl].BandName);
     } else {
         if (appMode == CHANNEL_MODE) {
-            if (gNextTimeslice_1s && ShowLines == 1){
-              ReadChannelName(channelFd,channelName);
-              gNextTimeslice_1s = 0;
-            }
+
             if (ScanListNumber[scanInfo.i] && ScanListNumber[scanInfo.i] <16) {
-                    len = sprintf(prefix, "S%d ", ScanListNumber[scanInfo.i]);
-                    pos += len;
+                sprintf(prefix, "S%d ", ScanListNumber[scanInfo.i]);
+            
             } else {
-                    len = sprintf(prefix, "ALL ");
-                    pos += len;
+                sprintf(prefix, "ALL ");
               }
-            len = sprintf(line2,"%-3s%s ", prefix, channelName);
+            sprintf(line2,"%-3s%s ", prefix, channelName);
             }
           }
         pos = 0;
@@ -2092,11 +2093,7 @@ static void OnKeyDown(uint8_t key) {
         //else if (ShowLines > 4) {historyListIndex = (historyListIndex >0 ? historyListIndex-1 : 0);}
         else if(appMode==CHANNEL_MODE){
               BuildValidScanListIndices();
-              static bool isFirst = true;
-              if (isFirst) {isFirst = false;
-                  scanListSelectedIndex = 0;
-              }
-              else {scanListSelectedIndex = (scanListSelectedIndex < validScanListCount ? scanListSelectedIndex+1 : 0);}
+              scanListSelectedIndex = (scanListSelectedIndex < validScanListCount ? scanListSelectedIndex+1 : 0);
               ToggleScanList(validScanListIndices[scanListSelectedIndex], 1);
               SetState(SPECTRUM);
               ResetModifiers();
@@ -2136,11 +2133,7 @@ static void OnKeyDown(uint8_t key) {
         //else if (ShowLines > 4) {if (historyListIndex < HISTORY_SIZE) historyListIndex++;}
         else if(appMode==CHANNEL_MODE){
             BuildValidScanListIndices();
-            static bool isFirst = true;
-            if (isFirst) {isFirst= false;
-                scanListSelectedIndex = 0;
-            }
-              else {scanListSelectedIndex = (scanListSelectedIndex < 1 ? validScanListCount-1:scanListSelectedIndex-1);}
+            scanListSelectedIndex = (scanListSelectedIndex < 1 ? validScanListCount-1:scanListSelectedIndex-1);
             ToggleScanList(validScanListIndices[scanListSelectedIndex], 1);
             SetState(SPECTRUM);
             ResetModifiers();
@@ -3256,7 +3249,7 @@ static bool GetScanListLabel(uint8_t scanListIndex, char* bufferOut) {
         uint32_t freq = gMR_ChannelFrequencyAttributes[first_channel].Frequency;
         char freqStr[12];
         sprintf(freqStr, "%u.%05u", freq / 100000, freq % 100000);
-        //RemoveTrailZeros(freqStr);
+        RemoveTrailZeros(freqStr);
         sprintf(bufferOut, "%-2d %-13s", scanListIndex + 1, freqStr);
     } else {
         sprintf(bufferOut, "%-2d %-13s", scanListIndex + 1, channel_name);
@@ -3402,9 +3395,10 @@ static void GetHistoryItemText(uint16_t index, char* buffer) {
     char Name[12] = ""; // 10 chars max + 1 pour \0 + 1 pour sécurité
     uint8_t dcount;
     uint32_t f = HFreqs[index];
-    buffer[0] = '\0'; 
+    buffer[0] = '\0';
+    if (!f) return;
     snprintf(freqStr, sizeof(freqStr), "%u.%05u", f / 100000, f % 100000);
-    //RemoveTrailZeros(freqStr);
+    RemoveTrailZeros(freqStr);
     
     uint16_t Hchannel = BOARD_gMR_fetchChannel(f);
     
@@ -3610,7 +3604,11 @@ static void RenderHistoryList() {
         if (itemIndex >= CountValidHistoryItems()) break;
         char itemText[32];
         GetHistoryItemText(itemIndex, itemText);
-        //if (strcmp(itemText, "") == 0) continue;
+        //if (strcmp(itemText, "") == 0) 
+        if (itemText[0] == '\0') 
+            {itemIndex--;
+             continue;
+            }
         uint16_t lineNumber = FIRST_ITEM_LINE + i;
         if (itemIndex == selectedIndex) {
             for (uint8_t x = 0; x < LCD_WIDTH; x++) {
@@ -3669,7 +3667,7 @@ static void RenderScanListChannelsDoubleLines(const char* title, uint8_t numItem
         uint32_t freq = gMR_ChannelFrequencyAttributes[channelIndex].Frequency;
         char freqStr[16];
         sprintf(freqStr, " %u.%05u", freq/100000, freq%100000);
-        //RemoveTrailZeros(freqStr);
+        RemoveTrailZeros(freqStr);
         
         uint8_t line1 = 1 + i * 2;
         uint8_t line2 = 2 + i * 2;

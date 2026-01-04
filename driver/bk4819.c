@@ -279,39 +279,17 @@ void BK4819_SetAGC(bool enable)
 	//         0 = -33dB
 	//
 
-void BK4819_InitAGC(const uint8_t agcType, ModulationMode_t modulation)
+void BK4819_InitAGC(ModulationMode_t modulation)
 {
 	if(modulation==MODULATION_AM)
 	{
 		//AM modulation
-		BK4819_WriteRegister(BK4819_REG_13, 0x3FF );
-		switch(agcType)
-		{	
-			
-			case RX_AGC_SLOW:
-				BK4819_WriteRegister(BK4819_REG_49, (0 << 14) | (50 << 7) | (15 << 0));
-				break;
-			case RX_AGC_FAST:
-				BK4819_WriteRegister(BK4819_REG_49, (0 << 14) | (50 << 7) | (20 << 0));
-				break;
-			default:
-				return;
-		}
+		BK4819_WriteRegister(BK4819_REG_49, (0 << 14) | (50 << 7) | (20 << 0));
+	
 	} else {
 		//FM, USB modulation
-		BK4819_WriteRegister(BK4819_REG_13, 0x0295);
-				switch(agcType)
-		{	
-			case RX_AGC_SLOW:
-				BK4819_WriteRegister(BK4819_REG_49, (0 << 14) | (84 << 7) | (56 << 0));
-				break;
-			case RX_AGC_FAST:
-				BK4819_WriteRegister(BK4819_REG_49, (0 << 14) | (84 << 7) | (66 << 0));
-				break;
-			default:
-				return;
+		BK4819_WriteRegister(BK4819_REG_49, (0 << 14) | (84 << 7) | (66 << 0));
 		}
-	}
 	LoadSettings(1);
 	BK4819_WriteRegister(BK4819_REG_7B, 0x8420); //Test 4.15
 /* 	BK4819_WriteRegister(BK4819_REG_12, 0x0393);  // 0x037B / 000000 11 011 11 011 / -24dB
