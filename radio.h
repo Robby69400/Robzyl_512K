@@ -114,9 +114,7 @@ typedef struct VFO_Info_t
 
 	uint8_t        SCANLIST;
 	uint8_t        Band;
-	uint8_t        BUSY_CHANNEL_LOCK;
 	ModulationMode_t    Modulation;
-	uint8_t        Compander;
 	char           Name[16];
 } VFO_Info_t;
 

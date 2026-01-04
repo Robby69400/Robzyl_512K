@@ -45,7 +45,6 @@ const t_menu_item MenuList[] =
 	{"Bandw",   MENU_W_N           },
 	{"Demodu",  MENU_AM            },
 	{"Roger",   MENU_ROGER         },
-	{"Compnd",  MENU_COMPAND       },
 	{"ScraEn",  MENU_SCREN         }, 
 	{"Scramb",  MENU_SCR           },
 	{"ScanLi",  MENU_S_LIST        }, 
@@ -74,7 +73,6 @@ const t_menu_item MenuList[] =
 	{"BatCal",  MENU_BATCAL        },
 	{"BatTyp",  MENU_BATTYP        },
 	{"TxPwr",   MENU_TXP           },
-	{"BusyCL",  MENU_BCL           },	
 	{"BatVol",  MENU_VOL           },
 	{"POnMsg",  MENU_PONMSG        },
 	{"KeyLck",  MENU_AUTOLK        },
@@ -451,12 +449,10 @@ void UI_DisplayMenu(void)
 				strcpy(String, (gSubMenuSelection == 0) ? "OFF" : "AUTO");
 				break;
 
-			case MENU_COMPAND:
 			case MENU_ABR_ON_TX_RX:
 				strcpy(String, gSubMenu_RX_TX[gSubMenuSelection]);
 				break;
 
-			case MENU_BCL:
 			case MENU_S_LIST:
 				sprintf(String, "%d", gSubMenuSelection);
 				break;

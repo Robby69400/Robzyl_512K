@@ -561,7 +561,7 @@ void BOARD_EEPROM_Init(void)
 	EEPROM_ReadBuffer(0x0F40, Data, 8);
 	gSetting_F_LOCK            = (Data[0] < F_LOCK_LEN) ? Data[0] : F_UNLOCK_PMR;
 	gSetting_ScrambleEnable    = (Data[6] < 2) ? Data[6] : true;
-	gSetting_battery_text      = 2;
+	gSetting_battery_text      = (((Data[7] >> 2) & 3u) <= 2) ? (Data[7] >> 2) & 3 : 2;
 	gSetting_backlight_on_tx_rx = (Data[7] >> 6) & 3u;
 	// Read RxOffset setting
 	EEPROM_ReadBuffer(0x0EA0, Data, 4);

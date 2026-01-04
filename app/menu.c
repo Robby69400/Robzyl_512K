@@ -159,13 +159,11 @@ int MENU_GetLimits(uint8_t menu_id, int32_t *pMin, int32_t *pMax)
 			*pMax = ARRAY_SIZE(gSubMenu_RESET) - 1;
 			break;
 
-		case MENU_COMPAND:
 		case MENU_ABR_ON_TX_RX:
 			*pMin = 0;
 			*pMax = ARRAY_SIZE(gSubMenu_RX_TX) - 1;
 			break;
 
-		case MENU_BCL:
 		case MENU_AUTOLK:
 		case MENU_S_LIST:
 			*pMin = 0;
@@ -379,11 +377,6 @@ void MENU_AcceptSetting(void)
 			gRequestSaveChannel     = 1;
 			return;
 
-		case MENU_BCL:
-			gTxVfo->BUSY_CHANNEL_LOCK = gSubMenuSelection;
-			gRequestSaveChannel       = 1;
-			return;
-
 		case MENU_MEM_CH:
 			gTxVfo->CHANNEL_SAVE = gSubMenuSelection;
 			gEeprom.MrChannel = gSubMenuSelection;
@@ -450,14 +443,6 @@ void MENU_AcceptSetting(void)
 			BOARD_EEPROM_LoadCalibration();
 			gFlagReconfigureVfos = true;
 			break;
-
-		case MENU_COMPAND:
-			gTxVfo->Compander = gSubMenuSelection;
-			SETTINGS_UpdateChannel(gTxVfo->CHANNEL_SAVE, gTxVfo, true);
-			gVfoConfigureMode = VFO_CONFIGURE;
-			gFlagResetVfos    = true;
-//			gRequestSaveChannel = 1;
-			return;
 
 		case MENU_BAT_TXT:
 			gSetting_battery_text = gSubMenuSelection;
@@ -649,10 +634,6 @@ void MENU_ShowCurrentSetting(void)
 			gSubMenuSelection = gTxVfo->SCRAMBLING_TYPE;
 			break;
 
-		case MENU_BCL:
-			gSubMenuSelection = gTxVfo->BUSY_CHANNEL_LOCK;
-			break;
-
 		case MENU_MEM_CH:
 			//todo: in vfo mode select last empty Channel slot
 			gSubMenuSelection = gEeprom.MrChannel;
@@ -697,10 +678,6 @@ void MENU_ShowCurrentSetting(void)
 		case MENU_MIC:
 			gSubMenuSelection = gEeprom.MIC_SENSITIVITY;
 			break;
-
-		case MENU_COMPAND:
-			gSubMenuSelection = gTxVfo->Compander;
-			return;
 
 		case MENU_BAT_TXT:
 			gSubMenuSelection = gSetting_battery_text;

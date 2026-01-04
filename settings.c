@@ -120,7 +120,6 @@ void SETTINGS_SaveChannel(uint16_t Channel, const VFO_Info_t *pVFO, uint8_t Mode
 			State[2] = (pVFO->freq_config_TX.CodeType << 4) | pVFO->freq_config_RX.CodeType;
 			State[3] = (pVFO->Modulation << 4) | pVFO->TX_OFFSET_FREQUENCY_DIRECTION;
 			State[4] = 0
-				| (pVFO->BUSY_CHANNEL_LOCK << 4)
 				| (pVFO->OUTPUT_POWER      << 2)
 				| ((pVFO->CHANNEL_BANDWIDTH != BK4819_FILTER_BW_WIDE) << 1)
 				| (pVFO->FrequencyReverse  << 0);

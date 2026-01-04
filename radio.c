@@ -105,8 +105,7 @@ void RADIO_InitInfo(VFO_Info_t *pInfo, const uint16_t ChannelSave, const uint32_
 	pInfo->freq_config_TX.Frequency = Frequency;
 	pInfo->pRX                      = &pInfo->freq_config_RX;
 	pInfo->pTX                      = &pInfo->freq_config_TX;
-	pInfo->Compander                = 0;  // off
-
+	
 	if (ChannelSave == (FREQ_CHANNEL_FIRST + BAND2_108MHz))
 		pInfo->Modulation = MODULATION_AM;
 	else
@@ -258,7 +257,6 @@ void RADIO_ConfigureChannel(const unsigned int configure)
 			pVfo->FrequencyReverse  = false;
 			pVfo->CHANNEL_BANDWIDTH = BK4819_FILTER_BW_WIDE;
 			pVfo->OUTPUT_POWER      = OUTPUT_POWER_LOW;
-			pVfo->BUSY_CHANNEL_LOCK = false;
 		}
 		else
 		{
@@ -266,7 +264,6 @@ void RADIO_ConfigureChannel(const unsigned int configure)
 			pVfo->FrequencyReverse  = !!((d4 >> 0) & 1u);
 			pVfo->CHANNEL_BANDWIDTH = !!((d4 >> 1) & 1u);
 			pVfo->OUTPUT_POWER      =   ((d4 >> 2) & 3u);
-			pVfo->BUSY_CHANNEL_LOCK = !!((d4 >> 4) & 1u);
 			if(pVfo->CHANNEL_BANDWIDTH != BK4819_FILTER_BW_WIDE)
 				pVfo->CHANNEL_BANDWIDTH = ((d4 >> 5) & 3u) + 1;
 		}	
@@ -590,8 +587,7 @@ void RADIO_SetupRegisters(bool switchToForeground)
 
 
 	// RX expander
-	BK4819_SetCompander((gTxVfo->Modulation == MODULATION_FM && gTxVfo->Compander >= 2) ? gTxVfo->Compander : 0);
-
+	
 	BK4819_WriteRegister(BK4819_REG_3F, InterruptMask);
 
 	FUNCTION_Init();
@@ -617,8 +613,7 @@ void RADIO_SetTxParameters(void)
 	BK4819_SetFrequency(gCurrentVfo->pTX->Frequency);
 
 	// TX compressor
-	BK4819_SetCompander((gTxVfo->Modulation == MODULATION_FM && (gTxVfo->Compander == 1 || gTxVfo->Compander >= 3)) ? gTxVfo->Compander : 0);
-
+	
 	BK4819_PrepareTransmit(gMuteMic);
 
 	SYSTEM_DelayMs(10);
@@ -719,7 +714,7 @@ void RADIO_PrepareTX(void)
 
 	if (TX_freq_check(gCurrentVfo->pTX->Frequency) == 0)
 	{	// TX frequency is allowed
-		if (gCurrentVfo->BUSY_CHANNEL_LOCK && gCurrentFunction == FUNCTION_RECEIVE)
+		if (gCurrentFunction == FUNCTION_RECEIVE)
 			State = VFO_STATE_BUSY;          // busy RX'ing a station
 		else
 		if (gBatteryDisplayLevel == 0)
