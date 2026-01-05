@@ -178,9 +178,6 @@ static uint8_t Spectrum_state;
 static PeakInfo peak;
 static ScanInfo scanInfo;
 static char     latestScanListName[12];
-static uint8_t BPRssiTriggerLevelUp[32]={0};
-static uint8_t SLRssiTriggerLevelUp[15]={0};
-// Deklaracja funkcji pomocniczej
 static bool IsBlacklisted(uint32_t f);
 
 SpectrumSettings settings = {stepsCount: STEPS_128,
@@ -912,7 +909,6 @@ static bool InitScan() {
                 settings.scanStepIndex = BParams[bl].scanStep; 
                 if(BParams[bl].Startfrequency>0) gScanRangeStart = BParams[bl].Startfrequency;
                 if(BParams[bl].Stopfrequency>0)  gScanRangeStop = BParams[bl].Stopfrequency;
-                settings.rssiTriggerLevelUp = BPRssiTriggerLevelUp[bl];
                 if (!gForceModulation) settings.modulationType = BParams[bl].modulationType;
                 nextBandToScanIndex = (nextBandToScanIndex + 1) % 32;
                 scanInitializedSuccessfully = true;
@@ -1579,7 +1575,6 @@ static void NextScanStep() {
     if (appMode==CHANNEL_MODE)
     { 
       int currentChannel = scanChannel[scanInfo.i];
-      settings.rssiTriggerLevelUp = SLRssiTriggerLevelUp[ScanListNumber[scanInfo.i]];
       scanInfo.f =  gMR_ChannelFrequencyAttributes[currentChannel].Frequency;
     } 
     else {
@@ -1606,19 +1601,14 @@ static void Skip() {
 }
 
 static void SetTrigger50(){
-  static int8_t previousTrigger = 0;
   char triggerText[32];
   if (settings.rssiTriggerLevelUp == 50) {
       sprintf(triggerText, "Trigger: oo");
-      for (int i = 0; i < 15; i++) {SLRssiTriggerLevelUp[i] = 50;}
-      for (int i = 0; i < 32; i++) {BPRssiTriggerLevelUp[i] = 50;}
   }
   else {
       sprintf(triggerText, "Trigger: %d", settings.rssiTriggerLevelUp);
-      if (previousTrigger == 50) LoadSettings(0);
   }
   ShowOSDPopup(triggerText);
-  previousTrigger = settings.rssiTriggerLevelUp;
 }
 
 static void OnKeyDown(uint8_t key) {
@@ -1986,8 +1976,6 @@ static void OnKeyDown(uint8_t key) {
       case KEY_STAR: {
           int step = (settings.rssiTriggerLevelUp >= 20) ? 5 : 1;
           settings.rssiTriggerLevelUp = (settings.rssiTriggerLevelUp >= 50? 0 : settings.rssiTriggerLevelUp + step);
-          if(appMode == SCAN_BAND_MODE) BPRssiTriggerLevelUp[bl] = settings.rssiTriggerLevelUp;
-          if(appMode == CHANNEL_MODE) SLRssiTriggerLevelUp[ScanListNumber[scanInfo.i]] = settings.rssiTriggerLevelUp;
           SPECTRUM_PAUSED = true;
           TriggerPauseCount = 100; //pause to set Uxx
           if (!SpectrumMonitor) Skip();
@@ -1998,8 +1986,6 @@ static void OnKeyDown(uint8_t key) {
       case KEY_F: {
           int step = (settings.rssiTriggerLevelUp <= 20) ? 1 : 5;
           settings.rssiTriggerLevelUp = (settings.rssiTriggerLevelUp <= 0? 50 : settings.rssiTriggerLevelUp - step);
-          if(appMode == SCAN_BAND_MODE) BPRssiTriggerLevelUp[bl] = settings.rssiTriggerLevelUp;
-          if(appMode == CHANNEL_MODE) SLRssiTriggerLevelUp[ScanListNumber[scanInfo.i]] = settings.rssiTriggerLevelUp;
           SPECTRUM_PAUSED = true;
           TriggerPauseCount = 100; //pause to set Uxx
           if (!SpectrumMonitor) Skip();
@@ -2799,8 +2785,9 @@ static void UpdateListening(void) { // called every 10ms
         stableFreq = peak.f;
         stableCount = 0;
     }
-    UpdateNoiseOn();
+    
     if (isListening || SpectrumMonitor || WaitSpectrum) {UpdateNoiseOff();}
+    UpdateNoiseOn();
         
     spectrumElapsedCount+=10; //in ms
     uint32_t maxCount = (uint32_t)MaxListenTime * 1000;
@@ -3012,8 +2999,6 @@ typedef struct {
     uint8_t DelayRssi;
     uint8_t PttEmission; 
     uint8_t listenBw;
-    uint16_t BPRssiTriggerLevelUp[32]; // 32 bytes of settings.rssiTriggerLevelUp levels
-    uint8_t SLRssiTriggerLevelUp[15];
     uint32_t bandListFlags;            // Bits 0-31: bandEnabled[0..31]
     uint16_t scanListFlags;            // Bits 0-14: scanListEnabled[0..14]
     int16_t Trigger;
@@ -3056,7 +3041,6 @@ void LoadSettings(bool LNA)
   if(!IsVersionMatching()) ClearSettings();
   for (int i = 0; i < 15; i++) {
     settings.scanListEnabled[i] = (eepromData.scanListFlags >> i) & 0x01;
-    SLRssiTriggerLevelUp[i] = eepromData.SLRssiTriggerLevelUp[i];
   }
   settings.rssiTriggerLevelUp = eepromData.Trigger;
   settings.listenBw = eepromData.listenBw;
@@ -3065,7 +3049,6 @@ void LoadSettings(bool LNA)
   if (eepromData.RangeStop >= 1400000) gScanRangeStop = eepromData.RangeStop;
   settings.scanStepIndex = eepromData.scanStepIndex;
   for (int i = 0; i < 32; i++) {
-      BPRssiTriggerLevelUp[i] = eepromData.BPRssiTriggerLevelUp[i];
       settings.bandEnabled[i] = (eepromData.bandListFlags >> i) & 0x01;
     }
   DelayRssi = eepromData.DelayRssi;
@@ -3113,7 +3096,6 @@ static void SaveSettings()
   SettingsEEPROM  eepromData  = {0};
   for (int i = 0; i < 15; i++) {
     if (settings.scanListEnabled[i]) eepromData.scanListFlags |= (1 << i);
-    eepromData.SLRssiTriggerLevelUp[i] = SLRssiTriggerLevelUp[i];
   }
   eepromData.Trigger = settings.rssiTriggerLevelUp;
   eepromData.listenBw = settings.listenBw;
@@ -3132,7 +3114,6 @@ static void SaveSettings()
   eepromData.osdPopupSetting = osdPopupSetting;
   
   for (int i = 0; i < 32; i++) { 
-      eepromData.BPRssiTriggerLevelUp[i] = BPRssiTriggerLevelUp[i];
       if (settings.bandEnabled[i]) eepromData.bandListFlags |= (1 << i);
     }
   eepromData.R40 = BK4819_ReadRegister(BK4819_REG_40);
@@ -3185,7 +3166,6 @@ void ClearSettings()
 {
   for (int i = 1; i < 15; i++) {
     settings.scanListEnabled[i] = 0;
-    SLRssiTriggerLevelUp[i] = 5;
   }
   settings.scanListEnabled[0] = 1;
   settings.rssiTriggerLevelUp = 5;
@@ -3205,16 +3185,12 @@ void ClearSettings()
   Noislvl_ON = 59;  
   UOO_trigger = 15;
   osdPopupSetting = 500;
-  for (int i = 0; i < 32; i++) { 
-      BPRssiTriggerLevelUp[i] = 5;
-      settings.bandEnabled[i] = 0;
-    }
-  settings.bandEnabled[0] = 1;
+  settings.bandEnabled[0] = 0;
   
   BK4819_WriteRegister(BK4819_REG_10, 0x0145);
   BK4819_WriteRegister(BK4819_REG_11, 0x01B5);
   BK4819_WriteRegister(BK4819_REG_12, 0x0393);
-  BK4819_WriteRegister(BK4819_REG_13, 0x03FF);
+  BK4819_WriteRegister(BK4819_REG_13, 0x03BE);
   BK4819_WriteRegister(BK4819_REG_14, 0x0019);
   
   BK4819_WriteRegister(BK4819_REG_40, 13520);
