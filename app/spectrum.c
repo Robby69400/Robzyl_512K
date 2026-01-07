@@ -1612,12 +1612,6 @@ static void SetTrigger50(){
 }
 static const uint8_t durations[] = {0, 20, 40, 60};
 
-void SPECTRUM_ResetKeylockTimer(void) {
-    if (AUTO_KEYLOCK) {
-        gKeylockCountdown = durations[AUTO_KEYLOCK];
-    }
-}
-
 static void OnKeyDown(uint8_t key) {
 
     //if (!gBacklightCountdown) {BACKLIGHT_TurnOn(); return;}
@@ -1627,12 +1621,12 @@ static void OnKeyDown(uint8_t key) {
         if (key == KEY_F) { 
             gIsKeylocked = false;
             ShowOSDPopup("Unlocked");
-            SPECTRUM_ResetKeylockTimer();
+            gKeylockCountdown = durations[AUTO_KEYLOCK];
             // Bip ou retour visuel ici
         }
         return;
     } 
-    SPECTRUM_ResetKeylockTimer();
+    gKeylockCountdown = durations[AUTO_KEYLOCK];
     // NEW HANDLING: press of '4' key in SCAN_BAND_MODE
     if (appMode == SCAN_BAND_MODE && key == KEY_4 && currentState == SPECTRUM) {
         SetState(BAND_LIST_SELECT);
@@ -1961,9 +1955,9 @@ static void OnKeyDown(uint8_t key) {
                       break;
                   case 18: // AUTO_KEYLOCK
                       AUTO_KEYLOCK = isKey3 ? 
-                                 (AUTO_KEYLOCK > 3 ? 0 : AUTO_KEYLOCK + 1) :
-                                 (AUTO_KEYLOCK <= 0 ? 2 : AUTO_KEYLOCK - 1);
-                      SPECTRUM_ResetKeylockTimer();
+                                 (AUTO_KEYLOCK > 2 ? 0 : AUTO_KEYLOCK + 1) :
+                                 (AUTO_KEYLOCK <= 0 ? 3 : AUTO_KEYLOCK - 1);
+                      gKeylockCountdown = durations[AUTO_KEYLOCK];
                       break;
                   
               }
@@ -2846,8 +2840,8 @@ static void Tick() {
     
     if (gKeylockCountdown > 0) {gKeylockCountdown--;}
     if (AUTO_KEYLOCK && !gKeylockCountdown) {
+      if (!gIsKeylocked) ShowOSDPopup("Locked"); //Iggy replace this ?
       gIsKeylocked = true;
-      ShowOSDPopup("Locked"); //Iggy replace this ?
 	  }
 
   
@@ -3379,7 +3373,8 @@ static void GetParametersText(uint16_t index, char *buffer) {
             sprintf(buffer, "UOO_trigger: %d", UOO_trigger);
             break;
         case 18:
-            sprintf(buffer, "Keylock: %ds", durations[AUTO_KEYLOCK]/2);
+         if (AUTO_KEYLOCK) sprintf(buffer, "Keylock: %ds", durations[AUTO_KEYLOCK]/2);
+            else  sprintf(buffer, "Key Unlocked");
             break;
 
         
