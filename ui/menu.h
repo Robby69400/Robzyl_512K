@@ -68,6 +68,8 @@ enum
 	MENU_DEL_CH        ,
 	MENU_MEM_NAME      ,	
 	MENU_RESET         ,
+	MENU_SATCOM        ,
+	MENU_RXGAIN        ,
 	MENU_F_LOCK        
 };
 

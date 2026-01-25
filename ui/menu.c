@@ -80,6 +80,8 @@ const t_menu_item MenuList[] =
 	{"ChName",  MENU_MEM_NAME      },	
 	{"Reset",   MENU_RESET         },
 	{"F Lock",  MENU_F_LOCK        },
+	{"SatCom",  MENU_SATCOM        },  // ← новая строка
+    {"RXGain",  MENU_RXGAIN        },  // ← новая строка
 	{"",        0xff               }  // end of list - DO NOT delete or move this
 };
 
@@ -316,7 +318,7 @@ void UI_DisplayMenu(void)
 
 
 
-		
+		//**************выделение */
 		else
 		if (menu_index >= 0 && menu_index < (int)gMenuListCount)
 		{	// current menu item
@@ -537,6 +539,14 @@ void UI_DisplayMenu(void)
 			case MENU_F_LOCK:
 				strcpy(String, gSubMenu_F_LOCK[gSubMenuSelection]);
 				break;
+
+				case MENU_SATCOM:  // ← добавь здесь
+    sprintf(String, "%s", gEeprom.SATCOM_ENABLE ? "ON " : "OFF");
+    break;
+
+	case MENU_RXGAIN:  // ← добавь здесь
+    sprintf(String, "%s", gEeprom.AUDIO_BOOST_ENABLE ? "ON " : "OFF");
+    break;
 
 			case MENU_BATCAL:
 			{

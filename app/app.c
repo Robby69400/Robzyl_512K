@@ -285,6 +285,9 @@ static void HandleFunction(void)
 void APP_StartListening(FUNCTION_Type_t Function)
 {
 	const unsigned int chan = 0;
+
+
+	
 	if (gFmRadioMode)
 		BK1080_Init(0, false);
 
@@ -705,6 +708,51 @@ void APP_TimeSlice10ms(void)
 	}
 	SCANNER_TimeSlice10ms();
 	CheckKeys();
+if (gMRInputTimer > 0) {
+    gMRInputTimer--;
+    if (gMRInputTimer == 0 && gInputBoxIndex > 0 && IS_MR_CHANNEL(gEeprom.ScreenChannel)) {
+        uint16_t Channel = 0;
+
+        if (gInputBoxIndex == 1) {
+            Channel = gInputBox[0];
+        } else if (gInputBoxIndex == 2) {
+            Channel = gInputBox[0] * 10 + gInputBox[1];
+        } else if (gInputBoxIndex == 3) {
+            Channel = gInputBox[0] * 100 + gInputBox[1] * 10 + gInputBox[2];
+        }
+
+        Channel -= 1;
+
+        if (RADIO_CheckValidChannel(Channel, false, 0)) {
+            gEeprom.MrChannel     = Channel;
+            gEeprom.ScreenChannel = Channel;
+            gTxVfo->CHANNEL_SAVE  = Channel;
+
+            gRequestSaveVFO       = true;
+            gVfoConfigureMode     = VFO_CONFIGURE_RELOAD;
+// ← Добавь это: принудительная реконфигурация VFO сразу
+    RADIO_ConfigureChannel(gVfoConfigureMode);   // применяет настройки канала
+    gFlagReconfigureVfos  = true;                // флаг для полной перезагрузки
+
+            RADIO_SelectVfos();
+            RADIO_SetupRegisters(true);
+            BK4819_RX_TurnOn();
+
+            /*/ фонарик тест (оставь)
+			 for (int i = 0; i <1; i++) {
+            GPIO_SetBit(&GPIOC->DATA, GPIOC_PIN_FLASHLIGHT);
+            SYSTEM_DelayMs(50);
+            GPIO_ClearBit(&GPIOC->DATA, GPIOC_PIN_FLASHLIGHT);
+            SYSTEM_DelayMs(50);
+        }*/
+
+            gRequestDisplayScreen = DISPLAY_MAIN;  // если экран не обновляется
+        }
+
+        gInputBoxIndex = 0;
+        gMRInputTimer = 0;
+    }
+}
 }
 
 void cancelUserInputModes(void)

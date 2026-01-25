@@ -38,7 +38,7 @@
 #include "ui/inputbox.h"
 #include "ui/ui.h"
 #include <stdlib.h>
-
+uint16_t gMRInputTimer = 0;  // таймер ожидания следующей цифры (в 10 мс)
 bool gBacklightAlwaysOn = false;
 
 // Добавлено только это — время TX/RX
@@ -153,7 +153,7 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 					if (!IS_FREQ_CHANNEL(gTxVfo->CHANNEL_SAVE)) {
 						gWasFKeyPressed = false;
 
-#ifdef ENABLE_COPY_CHAN_TO_VFO
+						#ifdef ENABLE_COPY_CHAN_TO_VFO
 						if (gEeprom.VFO_OPEN && !gCssBackgroundScan)
 						{
 							if (IS_MR_CHANNEL(gEeprom.ScreenChannel))
@@ -173,7 +173,7 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 							}
 						}
 						
-#endif
+						#endif
 						return;
 					}
 
@@ -231,8 +231,12 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 					ACTION_Power();
 					gRequestSaveChannel = 1;
 					RADIO_SetupRegisters(true);
-					
 					break;
+
+
+				
+					
+					
 				case KEY_0:
 					// Длинное 0 — смена демодуляции
 					ACTION_SwitchDemodul();
@@ -298,23 +302,38 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 	{
 		INPUTBOX_Append(Key);
 		gRequestDisplayScreen = DISPLAY_MAIN;
-		if (IS_MR_CHANNEL(gTxVfo->CHANNEL_SAVE))
-		{	// user is entering channel number
-			uint16_t Channel;
-			if (gInputBoxIndex != 3)
-			{
-				gRequestDisplayScreen = DISPLAY_MAIN;
-				return;
-			}
-			gInputBoxIndex = 0;
-			Channel = ((gInputBox[0] * 100) + (gInputBox[1] * 10) + gInputBox[2]) - 1;
-			if (!RADIO_CheckValidChannel(Channel, false, 0)) return;
-			gEeprom.MrChannel     = Channel;
-			gEeprom.ScreenChannel = Channel;
-			gRequestSaveVFO       = true;
-			gVfoConfigureMode     = VFO_CONFIGURE_RELOAD;
-			return;
-		}
+
+		
+if (IS_MR_CHANNEL(gTxVfo->CHANNEL_SAVE)) {
+    // Append уже вызван выше — не добавляем второй!
+
+    gMRInputTimer = 100;  // 2 секунды ожидания
+
+    if (gInputBoxIndex == 3) {
+        uint16_t Channel = ((gInputBox[0] * 100) + (gInputBox[1] * 10) + gInputBox[2]) - 1;
+        if (RADIO_CheckValidChannel(Channel, false, 0)) {
+            gEeprom.MrChannel = Channel;
+            gEeprom.ScreenChannel = Channel;
+            gRequestSaveVFO = true;
+            gVfoConfigureMode = VFO_CONFIGURE_RELOAD;
+           // Обновляем активный VFO
+        gTxVfo->CHANNEL_SAVE = Channel;
+		
+
+        // Применяем канал сразу (твой вариант функций)
+        RADIO_SelectVfos();               // обновляет gTxVfo из gEeprom
+		gTxVfo->CHANNEL_SAVE = Channel;
+        RADIO_ConfigureChannel(0);        // 0 = текущий VFO, без ошибки аргументов
+        RADIO_SetupRegisters(true);       // включает приём на новом канале
+		BK4819_RX_TurnOn();
+        }
+		
+        gInputBoxIndex = 0;
+        gMRInputTimer = 0;
+    }
+
+   
+}
 
 		if (IS_FREQ_CHANNEL(gTxVfo->CHANNEL_SAVE))
 		{

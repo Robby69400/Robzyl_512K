@@ -577,6 +577,28 @@ void BK4819_SetFrequency(uint32_t Frequency)
 	
 	BK4819_WriteRegister(BK4819_REG_38, (Frequency >>  0) & 0xFFFF);
 	BK4819_WriteRegister(BK4819_REG_39, (Frequency >> 16) & 0xFFFF);
+	/*/ Backend форсаж для 27 МГц
+    if (Frequency < 3000000) { 
+        // Выкручиваем усиление LNA (0x10) и убираем аттенюатор (0x12)
+        BK4819_WriteRegister(BK4819_REG_10, 0x3FFB);
+        BK4819_WriteRegister(BK4819_REG_12, 0x0000);
+        // Расширяем фильтр для AM (регистр 0x43)
+        BK4819_WriteRegister(BK4819_REG_43, BK4819_ReadRegister(BK4819_REG_43) | (1 << 9));
+    }*/
+	// Backend форсаж для 27 МГц (CB диапазон)  IGGIFORROBBY
+    if (Frequency < 3000000) 
+    {
+        // 1. Выкручиваем усиление LNA и Смесителя на максимум (Регистр 0x10)
+        // В КВ диапазоне чип "тугой", без этого бита он почти ничего не видит
+        BK4819_WriteRegister(BK4819_REG_10, 0x3FFB);
+
+        // 2. Отключаем аттенюаторы (Регистр 0x12)
+        BK4819_WriteRegister(BK4819_REG_12, 0x0000);
+        
+        // 3. Оптимизация ПЧ (Регистр 0x43) - ставим широкую полосу для AM
+        uint16_t r43 = BK4819_ReadRegister(0x43);
+        BK4819_WriteRegister(0x43, r43 | (7 << 9));
+    }
 }
 
 void BK4819_SetupSquelch(
@@ -704,7 +726,7 @@ void BK4819_RX_TurnOn(void)
 	// Turn off everything
 	BK4819_WriteRegister(BK4819_REG_30, 0);
 
-	SYSTEM_DelayMs(10);  // Delay for RX activation ЧИНИМ ПРИЕМ 
+	SYSTEM_DelayMs(20);  // Delay for RX activation ЧИНИМ ПРИЕМ 
 
 	BK4819_WriteRegister(BK4819_REG_30, 
 		BK4819_REG_30_ENABLE_VCO_CALIB |
