@@ -812,11 +812,11 @@ static void ToggleAudio(bool on) {
   }
 }
 
-//***************************ИСТОРИЯ*************************** */
 static void FillfreqHistory(void)
 {
     uint32_t f = peak.f;
     if (f == 0 || f < 1400000 || f > 130000000) return;
+
     for (uint16_t i = 0; i < indexFs; i++) {
         if (HFreqs[i] == f) {
             // Gestion du compteur
@@ -831,31 +831,30 @@ static void FillfreqHistory(void)
             return;
         }
     }
-
-    // При переполнении — удаляем самую старую (первую)
-    if (indexFs >= HISTORY_SIZE) {
-        for (uint16_t i = 0; i < HISTORY_SIZE - 1; i++) {
-            HFreqs[i] = HFreqs[i + 1];
-            HCount[i] = HCount[i + 1];
-            HBlacklisted[i] = HBlacklisted[i + 1];
-        }
-        indexFs = HISTORY_SIZE - 1;  // уменьшаем на 1, чтобы добавить новую
-    }
-
     uint16_t pos = 0;
     while (pos < indexFs && HFreqs[pos] < f) {pos++;}
+
     for (uint16_t i = indexFs; i > pos; i--) {
-        HFreqs[i] = HFreqs[i - 1];
-        HCount[i] = HCount[i - 1];
+        HFreqs[i]       = HFreqs[i - 1];
+        HCount[i]       = HCount[i - 1];
         HBlacklisted[i] = HBlacklisted[i - 1];
     }
-    HFreqs[pos] = f;
-    HCount[pos] = 1;
+
+    HFreqs[pos]       = f;
+    HCount[pos]       = 1;
     HBlacklisted[pos] = 0;
     lastReceivingFreq = f;
     historyListIndex = pos;
-    indexFs++;
-}
+    if (indexFs < HISTORY_SIZE) indexFs++;
+    
+    if (indexFs >= HISTORY_SIZE) {indexFs = 0;}
+/*     for (uint8_t i = 0; i < indexFs; i++) {
+        char str[64];
+        sprintf(str, "%d %d %lu\r\n", i, indexFs, HFreqs[i]);
+        LogUart(str);
+    } */
+
+} 
 
 static void ToggleRX(bool on) {
     if (SPECTRUM_PAUSED) return;
@@ -1484,9 +1483,6 @@ static void DrawF(uint32_t f) {
     //FormatFrequency(f, freqStr, sizeof(freqStr));
     snprintf(freqStr, sizeof(freqStr), "%u.%05u", f / 100000, f % 100000); //последние нули
     UpdateCssDetection(); // субтон новый
-
-//СТРОКИ 
-
     uint16_t channelFd = BOARD_gMR_fetchChannel(f);
     isKnownChannel = (channelFd != 0xFFFF);
     char line1[19] = "";
@@ -1558,11 +1554,7 @@ static void DrawF(uint32_t f) {
     }
     
    
-    
-   // AFFICHAGE// СТРОКИ СПЕКТРА 3шт
     if (classic) {
-
-
             if (ShowLines == 2) {
                 UI_DisplayFrequency(line1, 10, 0, 0);  // BIG FREQUENCY
                 GUI_DisplaySmallestDark(StringCode, 80, 17, false, false);  // CSS субтон
@@ -3021,8 +3013,6 @@ static void Tick() {
       gIsKeylocked = true;
       ShowOSDPopup("LOCKED"); //Iggy replace this ?
 	  }
-
-  
   }
 
   if (gNextTimeslice_10ms) {
@@ -3557,7 +3547,8 @@ static void GetParametersText(uint16_t index, char *buffer) {
             sprintf(buffer, "UOO Trigger: %d", UOO_trigger);
             break;
         case 18:
-            sprintf(buffer, "Key Lock Timer: %ds", durations[AUTO_KEYLOCK]/2);
+         if (AUTO_KEYLOCK) sprintf(buffer, "Keylock: %ds", durations[AUTO_KEYLOCK]/2);
+            else  sprintf(buffer, "Key Unlocked");
             break;
 
         case 19:
@@ -3576,7 +3567,6 @@ static void GetParametersText(uint16_t index, char *buffer) {
     }
 }
 
-//***********бэнды список */
 static void GetBandItemText(uint16_t index, char* buffer) {
     if (settings.bandEnabled[index]) {
         sprintf(buffer, "> %d: %-11s", index + 1, BParams[index].BandName);
@@ -3585,7 +3575,6 @@ static void GetBandItemText(uint16_t index, char* buffer) {
     }
 }
 
-//*********************ИСТОРИЯ СПИСОК************** */
 static void GetHistoryItemText(uint16_t index, char* buffer) {
     char freqStr[12];
     char Name[20] = "";  // запас на имя + "..."
@@ -3605,6 +3594,7 @@ static void GetHistoryItemText(uint16_t index, char* buffer) {
         dcount = HCount[index] / 2;
     }
     
+    // Lecture du nom du canal (Argument 1: Index, Argument 2: Buffer)
     if (Hchannel != 0xFFFF) {
         ReadChannelName(Hchannel, Name);
         Name[19] = '\0';  // безопасность
@@ -3612,60 +3602,86 @@ static void GetHistoryItemText(uint16_t index, char* buffer) {
     
     const char *blacklistPrefix = HBlacklisted[index] ? "#" : "";
 
-    // Счётчик
-    char dcountStr[8];
+    // --- 2. Détermination de l'espace nécessaire (Max 18 chars) ---
+    const size_t MAX_LINE_CHARS = 18; 
+    
+    // Construction de la chaîne du compteur (Ex: ":5" ou ":1234")
+    char dcountStr[6]; 
     snprintf(dcountStr, sizeof(dcountStr), ":%u", dcount);
 
-    // Максимальная длина строки ≈ 19–20 символов (под твой экран)
-    const size_t MAX_LINE = 19;
+    size_t len_prefix = strlen(blacklistPrefix);
+    size_t len_freq = strlen(freqStr);
+    size_t len_name = strlen(Name);
+    size_t len_dcount = strlen(dcountStr);
 
-    // Длина фиксированных частей
-    size_t fixed_len = strlen(blacklistPrefix) + strlen(freqStr) + strlen(dcountStr);
-    if (strlen(Name) > 0) fixed_len += 1;  // пробел перед именем
-
-    // Сколько места остаётся для имени
-    size_t max_name_len = (fixed_len < MAX_LINE) ? (MAX_LINE - fixed_len) : 0;
-
-    if (max_name_len > 0 && strlen(Name) > max_name_len) {
-        // Обрезаем имя справа + добавляем "..."
-        // Внутри if (strlen(Name) > max_name_len)
-    if (max_name_len >= 4) {
-        Name[max_name_len - 3] = '\0';   // ... в конце
-        strcat(Name, "_");
-    } else if (max_name_len >= 3) {
-        Name[max_name_len - 2] = '\0';
-        strcat(Name, ".");              // только два точки
+    // Longueur requise pour la partie non-fréquence : [Prefix] + [Espace] + [Name] + [Dcount]
+    size_t critical_len = len_prefix + 1 + len_name + len_dcount; 
+    
+    size_t space_for_freq = 0;
+    
+    if (MAX_LINE_CHARS > critical_len) {
+        // Cas nominal : Il y a de la place après le Nom et le Compteur.
+        space_for_freq = MAX_LINE_CHARS - critical_len;
     } else {
-        Name[max_name_len] = '\0';
-    }
+        // Cas critique : Le Nom et le Compteur sont trop longs. On supprime le Nom.
+        
+        // Recalcul de la longueur critique sans le Nom et l'espace qui le précède.
+        critical_len = len_prefix + 1 + len_dcount;
+        
+        if (MAX_LINE_CHARS > critical_len) {
+            space_for_freq = MAX_LINE_CHARS - critical_len;
+        } else {
+            // Cas très critique : On donne tout l'espace sauf le compteur (très court)
+            space_for_freq = MAX_LINE_CHARS - len_dcount; 
+        }
+        
+        // Suppression du nom pour l'affichage final
+        Name[0] = '\0';
+        len_name = 0;
     }
 
-    // Собираем финальную строку
-    snprintf(buffer, 32, "%s%s%s%s%s",
+    // --- 3. Construction de la chaîne finale (avec troncature de la Fréquence) ---
+    
+    // La longueur finale à afficher pour la fréquence (min(espace_disponible, longueur_réelle))
+    size_t final_freq_len = (space_for_freq > len_freq) ? len_freq : space_for_freq;
+    
+    // Le format : [Prefix][Freq Tronquée][Espace si Nom][Name][Dcount]
+    
+    // Le snprintf final doit toujours garantir que la taille n'est pas dépassée (19)
+    snprintf(buffer, 19, "%s%.*s%s%s%s", 
              blacklistPrefix,
-             freqStr,
-             (strlen(Name) > 0) ? " " : "",
-             Name,
+             (int)final_freq_len, // Troncature dynamique de la fréquence
+             freqStr, 
+             (len_name > 0) ? " " : "", // Espace si le Nom n'est pas vide (géré par la suppression ci-dessus)
+             Name, 
              dcountStr);
 }
 
 
-//*******************************СПИСКИ*****************************// 
+//*******************************СПИСКИ*****************************// */
 static void RenderList(const char* title, uint16_t numItems, uint16_t selectedIndex, uint16_t scrollOffset,
                       void (*getItemText)(uint16_t index, char* buffer)) {
+    // Clear display buffer
     memset(gFrameBuffer, 0, sizeof(gFrameBuffer));
     
-    if (!SpectrumMonitor) {
-        UI_PrintStringSmall(title, 1, LCD_WIDTH - 1, 0, 0);
+    // Draw title - wyrównany do lewej dla maksymalnego wykorzystania miejsca
+    if (!SpectrumMonitor) UI_PrintStringSmall(title, 1, LCD_WIDTH - 1, 0,0);
+    // List parameters for UI_PrintStringSmall (lines 1-7 available)
+    const uint8_t FIRST_ITEM_LINE = 1;  // Start from line 1 (line 0 is title)
+    const uint8_t MAX_LINES = 6;        // Lines 1-7 available for items
+    
+    // Adjust scroll offset if needed
+    if (numItems <= MAX_LINES) {
+        scrollOffset = 0;
+    } else if (selectedIndex < scrollOffset) {
+        scrollOffset = selectedIndex;
+    } else if (selectedIndex >= scrollOffset + MAX_LINES) {
+        scrollOffset = selectedIndex - MAX_LINES + 1;
     }
-
-    const uint8_t FIRST_ITEM_LINE = 1;
-    const uint8_t MAX_LINES = 6;
     
-    if (numItems <= MAX_LINES) scrollOffset = 0;
-    else if (selectedIndex < scrollOffset) scrollOffset = selectedIndex;
-    else if (selectedIndex >= scrollOffset + MAX_LINES) scrollOffset = selectedIndex - MAX_LINES + 1;
-    
+    // Maksymalna liczba znaków na linię (128 pikseli / 7 pikseli na znak = ~18)
+    const uint8_t MAX_CHARS_PER_LINE = 18;
+    // Draw visible items
     for (uint8_t i = 0; i < MAX_LINES; i++) {
         uint16_t itemIndex = i + scrollOffset;
         if (itemIndex >= numItems) break;
@@ -3675,29 +3691,22 @@ static void RenderList(const char* title, uint16_t numItems, uint16_t selectedIn
         
         uint16_t lineNumber = FIRST_ITEM_LINE + i;
         
-        // Проверяем, начинается ли строка с "<"
-        bool isEnabled = (itemText[0] == '>');
-        
+        // Wyrównanie maksymalnie do lewej
         if (itemIndex == selectedIndex) {
-            // Курсор — всегда инверсия + BSmall
-            for (uint8_t x = 0; x < LCD_WIDTH; x++) {
-                for (uint8_t y = lineNumber * 8; y < (lineNumber + 1) * 8; y++) {
-                    PutPixel(x, y, true);
-                }
-            }
-            UI_PrintStringSmall(itemText, 1, 0, lineNumber, 1);
-        } else if (isEnabled) {
-            // Включённый (начинается с "<") → BSmall без инверсии
-            UI_PrintStringSmall(itemText, 1, 0, lineNumber, 0);
+        char displayText[MAX_CHARS_PER_LINE + 1];
+        strcpy(displayText, itemText);
+        char selectedText[MAX_CHARS_PER_LINE + 2];
+        snprintf(selectedText, sizeof(selectedText), "%s", displayText);
+        UI_PrintStringSmall(selectedText, 1, 0, lineNumber,1);
         } else {
-            // Выключенный → Small
-            UI_PrintStringSmall(itemText, 1, 0, lineNumber, 0);
-        }
+            UI_PrintStringSmall(itemText, 1, 0, lineNumber,0); // Minimalne wcięcie
+          }
+          
     }
-    
     if (historyListActive && SpectrumMonitor > 0) DrawMeter(0);
     ST7565_BlitFullScreen();
 }
+
 
 
 // Wrapper functions for original calls
@@ -3753,71 +3762,54 @@ static void RenderParametersSelect() {
       static void RenderBandSelect() {RenderList("RUS BANDS:", ARRAY_SIZE(BParams),bandListSelectedIndex, bandListScrollOffset, GetBandItemText);}
 #endif
 
-
-
 static void RenderHistoryList() {
-    char headerString[32] = {0};
-    char rssiString[16] = {0};
+    char headerString[24];
+    // Clear display buffer
     memset(gFrameBuffer, 0, sizeof(gFrameBuffer));
     
-    uint16_t validCount = CountValidHistoryItems();
+    if (!SpectrumMonitor) {
+      sprintf(headerString, "HISTORY: %d", CountValidHistoryItems());
+      UI_PrintStringSmall(headerString, 1, LCD_WIDTH - 1, 0, 0);
+    } else DrawMeter(0);
     
-    // Жёсткий сброс скролла — первая строка не пропадает
-    if (validCount == 0) {
-        historyScrollOffset = 0;
-        historyListIndex = 0;
-        indexFs = 0;
-    } else {
-        if (historyScrollOffset >= validCount || historyScrollOffset > validCount - 6) {
-            historyScrollOffset = 0;
-        }
-        if (historyListIndex >= validCount) {
-            historyListIndex = validCount - 1;
-        }
-        if (historyListIndex < historyScrollOffset) {
-            historyScrollOffset = historyListIndex;
-        }
-        if (historyListIndex >= historyScrollOffset + 6) {
-            historyScrollOffset = historyListIndex - 6 + 1;
-        }
-        if (historyScrollOffset > validCount - 6) {
-            historyScrollOffset = validCount > 6 ? validCount - 6 : 0;
-        }
-    }
-
-    // Заголовок слева — фиксированная позиция X=1 (меняй здесь)
-    sprintf(headerString, "HISTORY: %d", validCount);
-    UI_PrintStringSmall(headerString, 1, 0, 0, 0);  // ← X=1 (слева), без центрирования
-
-    // RSSI справа — фиксированная позиция X=70 (меняй здесь 60–90)
-    sprintf(rssiString, "R:%3d", scanInfo.rssi);
-    UI_PrintStringSmall(rssiString, 80, LCD_WIDTH - 1, 0, 0);  // ← X=70 (справа)
-
     const uint16_t FIRST_ITEM_LINE = 1;
     const uint16_t MAX_LINES = 6;
-
+    
+    uint16_t scrollOffset = historyScrollOffset;
+    uint16_t selectedIndex = historyListIndex;
+    
+    // Adjust scroll offset if needed
+    if (indexFs <= MAX_LINES) {
+        scrollOffset = 0;
+    } else if (selectedIndex < scrollOffset) {
+        scrollOffset = selectedIndex;
+    } else if (selectedIndex >= scrollOffset + MAX_LINES) {
+        scrollOffset = selectedIndex - MAX_LINES + 1;
+    }
+    
+    // Draw visible items
     for (uint8_t i = 0; i < MAX_LINES; i++) {
-        uint16_t itemIndex = i + historyScrollOffset;
-        if (itemIndex >= validCount) break;
+        uint16_t itemIndex = i + scrollOffset;
 
+        if (itemIndex >= CountValidHistoryItems()) break;
         char itemText[32];
         GetHistoryItemText(itemIndex, itemText);
-        if (itemText[0] == '\0') continue;
-
+        //if (strcmp(itemText, "") == 0) 
+        if (itemText[0] == '\0') 
+            {itemIndex--;
+             continue;
+            }
         uint16_t lineNumber = FIRST_ITEM_LINE + i;
-
-        if (itemIndex == historyListIndex) {
+        if (itemIndex == selectedIndex) {
             for (uint8_t x = 0; x < LCD_WIDTH; x++) {
                 for (uint8_t y = lineNumber * 8; y < (lineNumber + 1) * 8; y++) {
-                    PutPixel(x, y, true);
-                }
+                        PutPixel(x, y, true);
+                    }
             }
             UI_PrintStringSmall(itemText, 1, 0, lineNumber, 1);
-        } else {
-            UI_PrintStringSmall(itemText, 1, 0, lineNumber, 0);
-        }
-    }
-
+            }
+        else {UI_PrintStringSmall(itemText, 1, 0, lineNumber, 0);}
+        } 
     ST7565_BlitFullScreen();
 }
 
@@ -3850,7 +3842,7 @@ static void RenderScanListChannels() {
 static void RenderScanListChannelsDoubleLines(const char* title, uint8_t numItems, 
                                              uint8_t selectedIndex, uint8_t scrollOffset) {
     memset(gFrameBuffer, 0, sizeof(gFrameBuffer));
-    UI_PrintStringSmall(title, 1, 0, 0,1); //*
+    UI_PrintStringSmall(title, 1, 0, 0,1);
     
     const uint8_t MAX_ITEMS_VISIBLE = 3; // 3 kanały x 2 linie = 6 linii
     
@@ -3871,13 +3863,13 @@ static void RenderScanListChannelsDoubleLines(const char* title, uint8_t numItem
         uint8_t line2 = 2 + i * 2;
         
         char nameText[20], freqText[20];
-        if (itemIndex == selectedIndex) { // списки заголовок
-            sprintf(nameText, "%3d :%s", channelIndex + 1, channel_name);
+        if (itemIndex == selectedIndex) {
+            sprintf(nameText, "%3d: %s", channelIndex + 1, channel_name);
             sprintf(freqText, "    %s", freqStr);
-            UI_PrintStringSmall(nameText, 1, 0, line1,1);//*
-            UI_PrintStringSmall(freqText, 1, 0, line2,1);//*
+            UI_PrintStringSmall(nameText, 1, 0, line1,1);
+            UI_PrintStringSmall(freqText, 1, 0, line2,1);
         } else {
-            sprintf(nameText, "%3d :%s", channelIndex + 1, channel_name);
+            sprintf(nameText, "%3d: %s", channelIndex + 1, channel_name);
             sprintf(freqText, "    %s", freqStr);
             UI_PrintStringSmall(nameText, 1, 0, line1,0);
             UI_PrintStringSmall(freqText, 1, 0, line2,0);
