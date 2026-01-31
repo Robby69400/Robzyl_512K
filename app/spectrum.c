@@ -91,12 +91,13 @@ static uint16_t UOO_trigger = 15;            // case 17
 static uint8_t AUTO_KEYLOCK = AUTOLOCK_OFF;  // case 18
 static uint8_t Gain3D_Index = 1;             // case 19 
 static bool    Enable2XIF = 0;               // case 20 
-#define PARAMETER_COUNT 21
+static bool    SoundBoost = 0;               // case 21 
+#define PARAMETER_COUNT 22
 ////////////////////////////////////////////////////////////////////
 
 uint8_t  gKeylockCountdown = 0;
 bool     gIsKeylocked = false;
-static uint16_t osdPopupTimer = 1000;
+static uint16_t osdPopupTimer = 0;
 static uint32_t Fmax = 0;
 static uint32_t spectrumElapsedCount = 0;
 static uint32_t SpectrumPauseCount = 0;
@@ -378,8 +379,6 @@ static void ShowOSDPopup(const char *str)
 {   osdPopupTimer = osdPopupSetting;
     strncpy(osdPopupText, str, sizeof(osdPopupText)-1);
     osdPopupText[sizeof(osdPopupText)-1] = '\0';  // Zabezpieczenie przed przepełnieniem
-    //UI_DisplayPopup(osdPopupText);
-    //ST7565_BlitFullScreen();
 }
 
 
@@ -2084,6 +2083,17 @@ static void OnKeyDown(uint8_t key) {
                       else reg43 &= ~(1 << 5);
                       BK4819_WriteRegister(BK4819_REG_43, reg43);
                       break;
+                  case 21: // AF 300 SoundBoost
+                      SoundBoost = !SoundBoost;
+                      if(SoundBoost){
+                            BK4819_WriteRegister(0x54, 0x8546);   	//default is 0x9009
+                            BK4819_WriteRegister(0x55, 0x3af0);		//default is 0x31a9
+                      }
+                      else {
+                        	BK4819_WriteRegister(0x54, 0x9009);
+                            BK4819_WriteRegister(0x55, 0x31A9);
+                      }
+                      break;
               }
         break;
 
@@ -3368,8 +3378,8 @@ void ClearSettings()
   IndexMaxLT = 0;
   IndexPS = 0;
   Backlight_On_Rx = 1;
-  Noislvl_OFF = 69; 
-  Noislvl_ON = 59;  
+  Noislvl_OFF = 62; 
+  Noislvl_ON = 52;  
   UOO_trigger = 15;
   osdPopupSetting = 500;
   settings.bandEnabled[0] = 1;
@@ -3558,6 +3568,9 @@ static void GetParametersText(uint16_t index, char *buffer) {
         case 20:
             sprintf(buffer
                 , "2X IF: %s", Enable2XIF ? "ON" : "OFF");
+            break;
+        case 21:
+            sprintf(buffer, "SoundBoost: %s", SoundBoost ? "ON" : "OFF");
             break;
         
         default:

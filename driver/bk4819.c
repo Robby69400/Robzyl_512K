@@ -81,9 +81,7 @@ void BK4819_Init(void)
 	BK4819_WriteRegister(BK4819_REG_36, 0x0022);
 	//BK4819_WriteRegister(0x54, 0x8546);   	//default is 0x9009
     //BK4819_WriteRegister(0x55, 0x3af0);		//default is 0x31a9
-	BK4819_WriteRegister(0x54, 0x8AA7);     	//default is 0x9009
-    BK4819_WriteRegister(0x55, 0x364C); 		//default is 0x31a9
-
+	
 	//BK4819_SetDefaultAmplifierSettings();
 
 	BK4819_WriteRegister(BK4819_REG_19, 0b0001000001000001);   // <15> MIC AGC  1 = disable  0 = enable
