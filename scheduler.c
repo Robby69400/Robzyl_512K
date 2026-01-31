@@ -61,7 +61,7 @@ void SystickHandler(void)
 		DECREMENT(gSerialConfigCountDown_500ms);
 	}
 	
-	if ((gGlobalSysTickCounter % 30) == 0)
+	if ((gGlobalSysTickCounter % 15) == 0)
 	{
 		gNextTimeslice_display = true;
 	} 
@@ -74,9 +74,10 @@ void SystickHandler(void)
 	} 
 
 	if ((gGlobalSysTickCounter & 3) == 0) {
-		gNextTimeslice40ms = true;
+		gNextTimeslice_30ms = true;
 	}
 	gNextTimeslice_10ms = true;
+	
 	DECREMENT(gFoundCDCSSCountdown_10ms);
 	DECREMENT(gFoundCTCSSCountdown_10ms);
 

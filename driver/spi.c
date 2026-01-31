@@ -34,7 +34,9 @@ void SPI0_Init(void)
 	Config.RXFIFO_FULL = 0;
 	Config.RXFIFO_OVF = 0;
 	Config.MSTR = 1;
-	Config.SPR = 2;
+	//SPR = 2 correspond au diviseur 16 ($48\text{ MHz} / 16 = 3\text{ MHz}$).
+	//SPR = 4 correspond au diviseur 32 ($48\text{ MHz} / 32 = 1.5\text{ MHz}$).
+	Config.SPR = 4; //Test Kolyan was 2
 	Config.CPHA = 1;
 	Config.CPOL = 1;
 	Config.LSB = 0;

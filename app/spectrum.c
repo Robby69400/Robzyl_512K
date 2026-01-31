@@ -801,9 +801,7 @@ static uint16_t GetRssi(void) {
 }
 
 static void ToggleAudio(bool on) {
-  if (on == audioState) {
-    return;
-  }
+
   audioState = on;
   if (on) {
     GPIO_SetBit(&GPIOC->DATA, GPIOC_PIN_AUDIO_PATH);
@@ -925,10 +923,12 @@ static void ToggleRX(bool on) {
         if(appMode!=CHANNEL_MODE) BK4819_WriteRegister(0x43, GetBWRegValueForScan());
         BK4819_ToggleGpioOut(BK4819_GPIO6_PIN2_GREEN, 0);
     }
-    ToggleAudio(on);
-    ToggleAFDAC(on);
-    ToggleAFBit(on);
-
+    if (on != audioState) {
+        ToggleAudio(on);
+        ToggleAFDAC(on);
+        ToggleAFBit(on);
+    }
+    
     // Если выключаем RX — возвращаем дефолт (на всякий случай)
     if (!on && gEeprom.SATCOM_ENABLE)
     {
@@ -3810,7 +3810,6 @@ static void RenderHistoryList() {
             }
         else {UI_PrintStringSmall(itemText, 1, 0, lineNumber, 0);}
         } 
-    ST7565_BlitFullScreen();
 }
 
 #ifdef ENABLE_SCANLIST_SHOW_DETAIL

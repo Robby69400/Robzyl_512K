@@ -22,11 +22,13 @@
 
 #include "bsp/dp32g030/gpio.h"
 #include "bsp/dp32g030/spi.h"
+
 #include "driver/gpio.h"
 #include "driver/spi.h"
 #include "driver/st7565.h"
 #include "driver/system.h"
 #include "misc.h"
+#include "ARMCM0.h" //Test Kolyan
 
 uint8_t gStatusLine[128];
 uint8_t gFrameBuffer[7][128];
@@ -65,12 +67,10 @@ void ST7565_DrawLine(const unsigned int Column, const unsigned int Line, const u
 
 void ST7565_BlitFullScreen(void)
 {
+	__disable_irq();
 	unsigned int Line;
-
 	SPI_ToggleMasterMode(&SPI0->CR, false);
-
 	ST7565_WriteByte(0x40);
-
 	for (Line = 0; Line < ARRAY_SIZE(gFrameBuffer); Line++)
 	{
 		unsigned int Column;
@@ -83,15 +83,9 @@ void ST7565_BlitFullScreen(void)
 		}
 		SPI_WaitForUndocumentedTxFifoStatusBit();
 	}
-
-	#if 0
-		// whats the delay for I wonder, it holds things up :(
-		SYSTEM_DelayMs(20);
-	#else
-//		SYSTEM_DelayMs(1);
-	#endif
-
+	SYSTEM_DelayMs(1);
 	SPI_ToggleMasterMode(&SPI0->CR, true);
+	__enable_irq();
 }
 
 void ST7565_BlitStatusLine(void)
