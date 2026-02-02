@@ -81,7 +81,7 @@ const t_menu_item MenuList[] =
 	{"Reset",   MENU_RESET         },
 	{"F Lock",  MENU_F_LOCK        },
 	{"SatCom",  MENU_SATCOM        },  // ← новая строка
-    {"RXGain",  MENU_RXGAIN        },  // ← новая строка
+    //{"RXGain",  MENU_RXGAIN        },  // ← новая строка
 	{"",        0xff               }  // end of list - DO NOT delete or move this
 };
 
@@ -544,9 +544,9 @@ void UI_DisplayMenu(void)
     sprintf(String, "%s", gEeprom.SATCOM_ENABLE ? "ON " : "OFF");
     break;
 
-	case MENU_RXGAIN:  // ← добавь здесь
+	/* case MENU_RXGAIN:  // ← добавь здесь
     sprintf(String, "%s", gEeprom.AUDIO_BOOST_ENABLE ? "ON " : "OFF");
-    break;
+    break; */
 
 			case MENU_BATCAL:
 			{

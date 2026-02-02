@@ -2679,8 +2679,9 @@ MyDrawFrameLines();
       DrawF(peak.f);
     }
     else {
-      if (SpectrumMonitor) DrawF(HFreqs[historyListIndex]);
-      else DrawF(scanInfo.f);
+      //if (SpectrumMonitor) DrawF(HFreqs[historyListIndex]);
+      //else 
+      DrawF(scanInfo.f);
     }
 }
 
@@ -2743,8 +2744,9 @@ static void DrawMeter(int line) {
 static void RenderStill() {
   classic=1;
   char freqStr[18];
-  if (SpectrumMonitor) FormatFrequency(HFreqs[historyListIndex], freqStr, sizeof(freqStr));
-  else FormatFrequency(scanInfo.f, freqStr, sizeof(freqStr));
+  //if (SpectrumMonitor) FormatFrequency(HFreqs[historyListIndex], freqStr, sizeof(freqStr));
+  //else
+  FormatFrequency(scanInfo.f, freqStr, sizeof(freqStr));
   UI_DisplayFrequency(freqStr, 0, 0, 0);
   DrawMeter(2);
   sLevelAttributes sLevelAtt;
