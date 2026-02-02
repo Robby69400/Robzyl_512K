@@ -62,7 +62,7 @@ void UI_DisplayFM(void)
 
 	// Нижняя (Y = 48)
 	for (uint8_t x = 8; x < 125; x += step) {
-		uint8_t y = 44;
+		uint8_t y = 48;
 		if (y < 8) gStatusLine[x] |= (1u << y);
 		else gFrameBuffer[(y - 8) >> 3][x] |= (1u << ((y - 8) & 7));
 	}
@@ -76,7 +76,7 @@ void UI_DisplayFM(void)
 
 	// === ДВЕ ВЕРТИКАЛЬНЫЕ ЛИНИИ ===
 	// Левая (X = 14, Y от 10 до 54)
-	for (uint8_t y = 9; y <= 53; y += step) {
+	for (uint8_t y = 10; y <= 52; y += step) {
 		uint8_t x = 14;
 		if (y < 8) gStatusLine[x] |= (1u << y);
 		else gFrameBuffer[(y - 8) >> 3][x] |= (1u << ((y - 8) & 7));

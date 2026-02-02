@@ -141,6 +141,62 @@ void UI_PrintStringSmall(const char *pString, uint8_t Start, uint8_t End, uint8_
     }
 }
 
+void UI_PrintStringBSmall(const char *pString, uint8_t Start, uint8_t End, uint8_t Line, uint8_t background)
+{
+    const size_t Length = strlen(pString);
+
+    const unsigned int char_width  = ARRAY_SIZE(gFontSmall[0]);
+    const unsigned int spacing     = 1;   // espacement minimal entre caractères
+    const unsigned int space_width = 4;   // largeur spéciale pour ' '
+
+    // cast pour éviter le warning
+    size_t start_pos = (size_t)Start;
+    size_t end_pos   = (size_t)End;
+
+    if (end_pos > start_pos)
+        start_pos += (((end_pos - start_pos) - (Length * (char_width + spacing))) + 1) / 2;
+
+    uint8_t *pFb = gFrameBuffer[Line] + start_pos;
+    
+    // remplir le fond
+    if (background) memset(pFb, 0xFF, 127);
+    
+    // position courante
+    uint8_t *cursor = pFb;
+
+    for (size_t i = 0; i < Length; i++)
+    {
+        if (pString[i] > ' ')
+        {
+            const unsigned int index = (unsigned int)pString[i] - ' ' - 1;
+            if (index < ARRAY_SIZE(gFontBSmall))
+            {
+                unsigned int char_width_used = char_width;
+                while (char_width_used > 0 && gFontBSmall[index][char_width_used - 1] == 0)
+                    char_width_used--;
+
+                uint8_t *dst = cursor;
+                switch (background) {
+                    case 0:
+                        memmove(dst, gFontBSmall[index], char_width_used);
+                        break;
+                    case 1:
+                        for (unsigned int c = 0; c < char_width_used; c++)
+                            dst[c] = ~gFontBSmall[index][c];
+                        break;
+                }
+
+                cursor += char_width_used + spacing;
+            }
+        }
+        else // espace
+        {
+            cursor += space_width;
+        }
+    }
+}
+
+
 void UI_PrintStringSmallBuffer(const char *pString, uint8_t *buffer)
 {
 	size_t i;
@@ -153,6 +209,22 @@ void UI_PrintStringSmallBuffer(const char *pString, uint8_t *buffer)
 			const unsigned int index = (unsigned int)pString[i] - ' ' - 1;
 			if (index < ARRAY_SIZE(gFontSmall))
 				memmove(buffer + (i * char_spacing) + 1, &gFontSmall[index], char_width);
+		}
+	}
+}
+
+void UI_PrintStringBSmallBuffer(const char *pString, uint8_t *buffer)
+{
+	size_t i;
+	const unsigned int char_width   = ARRAY_SIZE(gFontBSmall[0]);
+	const unsigned int char_spacing = char_width + 1;
+	for (i = 0; i < strlen(pString); i++)
+	{
+		if (pString[i] > ' ')
+		{
+			const unsigned int index = (unsigned int)pString[i] - ' ' - 1;
+			if (index < ARRAY_SIZE(gFontBSmall))
+				memmove(buffer + (i * char_spacing) + 1, &gFontBSmall[index], char_width);
 		}
 	}
 }

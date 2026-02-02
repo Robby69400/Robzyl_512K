@@ -286,7 +286,16 @@ void APP_StartListening(FUNCTION_Type_t Function)
 {
 	const unsigned int chan = 0;
 
-
+	//*******************фонарик при входящем */
+if (gEeprom.FlashlightOnRX && (Function == FUNCTION_RECEIVE || Function == FUNCTION_INCOMING))
+{
+    for (int i = 0; i < 6; i++) {
+        GPIO_SetBit(&GPIOC->DATA, GPIOC_PIN_FLASHLIGHT);
+        SYSTEM_DelayMs(50);
+        GPIO_ClearBit(&GPIOC->DATA, GPIOC_PIN_FLASHLIGHT);
+        SYSTEM_DelayMs(50);
+    }
+}
 	
 	if (gFmRadioMode)
 		BK1080_Init(0, false);
@@ -678,7 +687,7 @@ void APP_TimeSlice10ms(void)
 				UI_DisplayAudioBar();
 	}
 
-	static uint8_t DisplayStatusCountdown = 50; //Test Kolyan was 15
+	static uint8_t DisplayStatusCountdown = 15; // новое тест
 	if (!DisplayStatusCountdown--){
 		UI_DisplayStatus();
 		GUI_DisplayScreen();
@@ -738,13 +747,7 @@ if (gMRInputTimer > 0) {
             RADIO_SetupRegisters(true);
             BK4819_RX_TurnOn();
 
-            /*/ фонарик тест (оставь)
-			 for (int i = 0; i <1; i++) {
-            GPIO_SetBit(&GPIOC->DATA, GPIOC_PIN_FLASHLIGHT);
-            SYSTEM_DelayMs(50);
-            GPIO_ClearBit(&GPIOC->DATA, GPIOC_PIN_FLASHLIGHT);
-            SYSTEM_DelayMs(50);
-        }*/
+
 
             gRequestDisplayScreen = DISPLAY_MAIN;  // если экран не обновляется
         }
@@ -867,6 +870,10 @@ if (gBacklightCountdown > 0 && !gBacklightAlwaysOn &&
 					if (disp != DISPLAY_INVALID)
 						GUI_SelectNextDisplay(disp);
 				}
+				if (gFlagResetVfos) {
+    RADIO_SetupRegisters(true);
+    gFlagResetVfos = false;
+}
 			}
 		}
 	}

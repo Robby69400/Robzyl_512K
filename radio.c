@@ -653,15 +653,12 @@ else
     // ────────────────────────────────────────────────
     if (gEeprom.SATCOM_ENABLE && Frequency >= 24000000 && Frequency <= 28000000)
     {
-        // Моргание — 2 раза, чтобы отличать от дефолта
-        for (int i = 0; i < 1; i++) {
-            GPIO_SetBit(&GPIOC->DATA, GPIOC_PIN_FLASHLIGHT);
-            SYSTEM_DelayMs(10);
-            GPIO_ClearBit(&GPIOC->DATA, GPIOC_PIN_FLASHLIGHT);
-            if (i == 0) SYSTEM_DelayMs(50);
-        }
+      // Визуальное подтверждение (1 моргание зелёного LED)
+    BK4819_ToggleGpioOut(BK4819_GPIO6_PIN2_GREEN, true);
+    SYSTEM_DelayMs(50);
+    BK4819_ToggleGpioOut(BK4819_GPIO6_PIN2_GREEN, false);
 
-        // 1. Принудительный Band 3 (UHF high)
+        /*/ 1. Принудительный Band 3 (UHF high)
         uint16_t reg44 = BK4819_ReadRegister(0x44);
         reg44 = (reg44 & ~(7u << 13)) | (2u << 13);
         BK4819_WriteRegister(0x44, reg44);
@@ -684,11 +681,35 @@ else
         BK4819_WriteRegister(0x12, reg12);
 
         // Дополнительно: отключить AGC (чтобы не сбросил gain)
-        BK4819_WriteRegister(0x13, reg13 & ~(1u << 15));  // AGC OFF (бит 15)
+        BK4819_WriteRegister(0x13, reg13 & ~(1u << 15));  // AGC OFF (бит 15)*/
+
+		// 1. LNA/Mixer/IF на максимум (как у Fagci)
+    BK4819_WriteRegister(0x13, 0xBCFF);  // LNA=15, Mixer=3, IF=15, AGC ON
+    BK4819_WriteRegister(0x10, 0xF3FF);  // Mixer gain max + другие биты
+    // 2. Аттенюатор OFF
+    uint16_t reg12 = BK4819_ReadRegister(0x12);
+    reg12 &= ~(1u << 6);
+    BK4819_WriteRegister(0x12, reg12);
+    // 3. Широкий BW + оптимизация (2.5 kHz)
+    BK4819_WriteRegister(0x43, 0xF000 | (0b010 << 12));  // RF BW = 2.5 kHz
+    BK4819_SetFilterBandwidth(BK4819_FILTER_BW_NARROW, false);
+    // 4. Максимальный AF gain
+    BK4819_WriteRegister(BK4819_REG_48, 0xBFFF);  // Gain-2 max, DAC max
+
     }
     else
     {
-        // Возврат к нормальному режиму (перезаписываем)
+
+/*/ Визуальное подтверждение (3 моргание  LED)
+    BK4819_ToggleGpioOut(BK4819_GPIO5_PIN1_RED, true);
+    SYSTEM_DelayMs(50);
+    BK4819_ToggleGpioOut(BK4819_GPIO5_PIN1_RED, false);
+	  SYSTEM_DelayMs(50);
+    BK4819_ToggleGpioOut(BK4819_GPIO5_PIN1_RED, false);
+	  SYSTEM_DelayMs(50);
+    BK4819_ToggleGpioOut(BK4819_GPIO5_PIN1_RED, false);*/
+		
+        /*/ Возврат к нормальному режиму (перезаписываем)
         uint16_t reg13 = BK4819_ReadRegister(0x13);
         reg13 = (reg13 & ~(0xFu << 8)) | (0x08u << 8);   // LNA средний
         reg13 |= (1u << 15);                              // AGC ON
@@ -700,10 +721,17 @@ else
 
         uint16_t reg12 = BK4819_ReadRegister(0x12);
         reg12 &= ~(1u << 6);                              // аттенюатор авто
-        BK4819_WriteRegister(0x12, reg12);
+        BK4819_WriteRegister(0x12, reg12);*/
+
+		// Возврат к сток (важно!)
+    BK4819_WriteRegister(0x13, 0xB3A8);  // LNA сток
+    BK4819_WriteRegister(0x10, 0xF3A8);  // Mixer сток
+    BK4819_WriteRegister(0x12, 0xB3A8);  // аттенюатор авто/ON
+    BK4819_SetFilterBandwidth(gTxVfo->CHANNEL_BANDWIDTH, false);
+    BK4819_WriteRegister(BK4819_REG_48, 0xB3A8);
     }
 
-	// ────────────────────────────────────────────────
+	/*/ ────────────────────────────────────────────────
 // AUDIO BOOST PATCH (увеличение громкости RX)
 // ────────────────────────────────────────────────
 if (gEeprom.AUDIO_BOOST_ENABLE)  // Добавь флаг в settings.h (bool AUDIO_BOOST_ENABLE)
@@ -729,11 +757,7 @@ if (gEeprom.AUDIO_BOOST_ENABLE)  // Добавь флаг в settings.h (bool AU
     // Mic sensitivity для баланса (reg 0x7D — но осторожно, это влияет на TX тоже)
     BK4819_WriteRegister(BK4819_REG_7D, 0xE940 | (0x1Fu & 0x1F));  // Max mic tuning
 
-    // Визуальное подтверждение (1 моргание зелёного LED)
-    BK4819_ToggleGpioOut(BK4819_GPIO6_PIN2_GREEN, true);
-    SYSTEM_DelayMs(50);
-    BK4819_ToggleGpioOut(BK4819_GPIO6_PIN2_GREEN, false);
-}
+}*/
 
 }
 

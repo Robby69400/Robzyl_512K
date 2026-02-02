@@ -1,1 +1,1 @@
-#define APP_VERSION 769
+#define APP_VERSION 772

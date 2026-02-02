@@ -35,11 +35,13 @@
 #include "ui/ui.h"
 #include "ui/status.h"
 #include "app/main.h"  // для txTimeSeconds, rxTimeSeconds, isTxActive
+
 uint16_t BK4819_GetRSSI(void);
 void UI_DisplayStatus()
 {
 	char time_str[6];
 	const uint8_t TIME_POS_X = 16;  // редактируемая позиция времени (X в пикселях, можно менять)
+	const uint8_t POS_FL = 63;  // Позиция для иконки фонарика (правее "B")
 
 	memset(gStatusLine, 0, sizeof(gStatusLine));
 
@@ -47,14 +49,14 @@ void UI_DisplayStatus()
 	const uint8_t POS_TX   = 0;    // начало "TX" при передаче
 	const uint8_t POS_RX   = 0;    // начало "RX" при приёме
 	const uint8_t POS_PS   = 0;    // начало "PS" при Power Save
-	const uint8_t POS_LOCK = 82;   // Замок
-	const uint8_t POS_F    = 82;   // "F"
-	const uint8_t POS_B    = 54;   // "B"
+	const uint8_t POS_LOCK = 81;   // Замок
+	const uint8_t POS_F    = 81;   // "F"
+	const uint8_t POS_B    = 72;   // "подсветка"
 
 		// === Индикаторы TX / RX / PS — мелким шрифтом как у батареи (позиция по POS_...) ===
 	if (gCurrentFunction == FUNCTION_TRANSMIT)
 	{
-		UI_PrintStringSmallBuffer("TX", gStatusLine + POS_TX);
+		UI_PrintStringBSmallBuffer("TX", gStatusLine + POS_TX);
 
 		sprintf(time_str, "%02u:%02u", txTimeSeconds / 60, txTimeSeconds % 60);
 		UI_PrintStringSmallBuffer(time_str, gStatusLine + TIME_POS_X);
@@ -63,47 +65,95 @@ void UI_DisplayStatus()
 	         gCurrentFunction == FUNCTION_MONITOR ||
 	         gCurrentFunction == FUNCTION_INCOMING)
 	{
-		UI_PrintStringSmallBuffer("RX", gStatusLine + POS_RX);
+		UI_PrintStringBSmallBuffer("RX", gStatusLine + POS_RX);
 
 		sprintf(time_str, "%02u:%02u", rxTimeSeconds / 60, rxTimeSeconds % 60);
 		UI_PrintStringSmallBuffer(time_str, gStatusLine + TIME_POS_X);
 	}
 	else if (gCurrentFunction == FUNCTION_POWER_SAVE)
 	{
-		UI_PrintStringSmallBuffer("PS", gStatusLine + POS_PS);
+		UI_PrintStringBSmallBuffer("PS", gStatusLine + POS_PS);
 	}
+
+		// === Индикатор функции фонарика при приеме "L" ===
+if (gEeprom.FlashlightOnRX)
+{
+gStatusLine[POS_FL + 0] |= 0x00;
+gStatusLine[POS_FL + 1] |= 0x00;
+gStatusLine[POS_FL + 2] |= 0x00;
+gStatusLine[POS_FL + 3] |= 0x00;
+gStatusLine[POS_FL + 4] |= 0x00;
+gStatusLine[POS_FL + 5] |= 0x00;
+gStatusLine[POS_FL + 6] |= 0x00;
+gStatusLine[POS_FL + 7] |= 0x00;
+gStatusLine[POS_FL + 8] |= 0x70;
+gStatusLine[POS_FL + 9] |= 0x7E;
+gStatusLine[POS_FL + 10] |= 0x61;
+gStatusLine[POS_FL + 11] |= 0x61;
+gStatusLine[POS_FL + 12] |= 0x61;
+gStatusLine[POS_FL + 13] |= 0x7E;
+gStatusLine[POS_FL + 14] |= 0x70;
+    
+}
 
 	// === Индикатор блокировки клавиатуры (замок) ===
 	if (gEeprom.KEY_LOCK)
 	{
-		gStatusLine[POS_LOCK + 0] |= 0x7F;
-		gStatusLine[POS_LOCK + 1] |= 0x41;
-		gStatusLine[POS_LOCK + 2] |= 0x45;
-		gStatusLine[POS_LOCK + 3] |= 0x45;
-		gStatusLine[POS_LOCK + 4] |= 0x41;
-		gStatusLine[POS_LOCK + 5] |= 0x7F;
+	gStatusLine[POS_LOCK + 0] |= 0x00;
+gStatusLine[POS_LOCK + 1] |= 0x00;
+gStatusLine[POS_LOCK + 2] |= 0x00;
+gStatusLine[POS_LOCK + 3] |= 0x00;
+gStatusLine[POS_LOCK + 4] |= 0x00;
+gStatusLine[POS_LOCK + 5] |= 0x00;
+gStatusLine[POS_LOCK + 6] |= 0x00;
+gStatusLine[POS_LOCK + 7] |= 0x00;
+gStatusLine[POS_LOCK + 8] |= 0x7C;
+gStatusLine[POS_LOCK + 9] |= 0x7A;
+gStatusLine[POS_LOCK + 10] |= 0x79;
+gStatusLine[POS_LOCK + 11] |= 0x49;
+gStatusLine[POS_LOCK + 12] |= 0x79;
+gStatusLine[POS_LOCK + 13] |= 0x7A;
+gStatusLine[POS_LOCK + 14] |= 0x7C;
 	}
 
 	// === Индикатор нажатой F-клавиши ===
 	if (gWasFKeyPressed)
 	{
-		gStatusLine[POS_F + 0] |= 0x7F;
-		gStatusLine[POS_F + 1] |= 0x41;
-		gStatusLine[POS_F + 2] |= 0x41;
-		gStatusLine[POS_F + 3] |= 0x75;
-		gStatusLine[POS_F + 4] |= 0x75;
-		gStatusLine[POS_F + 5] |= 0x7F;
+		gStatusLine[POS_F + 0] |= 0x00;
+gStatusLine[POS_F + 1] |= 0x00;
+gStatusLine[POS_F + 2] |= 0x00;
+gStatusLine[POS_F + 3] |= 0x00;
+gStatusLine[POS_F + 4] |= 0x00;
+gStatusLine[POS_F + 5] |= 0x00;
+gStatusLine[POS_F + 6] |= 0x00;
+gStatusLine[POS_F + 7] |= 0x00;
+gStatusLine[POS_F + 8] |= 0x7F;
+gStatusLine[POS_F + 9] |= 0x41;
+gStatusLine[POS_F + 10] |= 0x75;
+gStatusLine[POS_F + 11] |= 0x75;
+gStatusLine[POS_F + 12] |= 0x75;
+gStatusLine[POS_F + 13] |= 0x7D;
+gStatusLine[POS_F + 14] |= 0x7F;
 	}
 
 	// === Индикатор постоянной подсветки "B" ===
 	if (gBacklightAlwaysOn)
 	{
-		gStatusLine[POS_B + 0] |= 0x7F;
-		gStatusLine[POS_B + 1] |= 0x73;
-		gStatusLine[POS_B + 2] |= 0x4D;
-		gStatusLine[POS_B + 3] |= 0x4D;
-		gStatusLine[POS_B + 4] |= 0x73;
-		gStatusLine[POS_B + 5] |= 0x7F;
+	gStatusLine[POS_B + 0] |= 0x00;
+gStatusLine[POS_B + 1] |= 0x00;
+gStatusLine[POS_B + 2] |= 0x00;
+gStatusLine[POS_B + 3] |= 0x00;
+gStatusLine[POS_B + 4] |= 0x00;
+gStatusLine[POS_B + 5] |= 0x00;
+gStatusLine[POS_B + 6] |= 0x00;
+gStatusLine[POS_B + 7] |= 0x00;
+gStatusLine[POS_B + 8] |= 0x0C;
+gStatusLine[POS_B + 9] |= 0x12;
+gStatusLine[POS_B + 10] |= 0x65;
+gStatusLine[POS_B + 11] |= 0x79;
+gStatusLine[POS_B + 12] |= 0x65;
+gStatusLine[POS_B + 13] |= 0x12;
+gStatusLine[POS_B + 14] |= 0x0C;
 	}
 
 
@@ -120,7 +170,7 @@ void UI_DisplayStatus()
     sprintf(meterStr, "S%d", (sLevelAtt.sLevel >= 9 || sLevelAtt.over > 0) ? 9 : sLevelAtt.sLevel);
 
             // ПОЗИЦИЯ — МЕНЯЙ ЗДЕСЬ
-            unsigned int meter_x = 64;  // ← основная позиция (70 — слева от батареи)
+            unsigned int meter_x = 53;  // ← основная позиция (70 — слева от батареи)
             unsigned int space_needed = 7 * strlen(meterStr);
             unsigned int start_x = meter_x;
 
@@ -129,7 +179,7 @@ void UI_DisplayStatus()
                 start_x = LCD_WIDTH - 20 - space_needed;
             }
 
-            UI_PrintStringSmallBuffer(meterStr, gStatusLine + start_x);
+            UI_PrintStringBSmallBuffer(meterStr, gStatusLine + start_x);
         }
     }
 	// === Battery voltage / percentage ===
@@ -146,7 +196,7 @@ void UI_DisplayStatus()
 				sprintf(s, "%u.%02uV", voltage / 100, voltage % 100);
 				space_needed = 7 * strlen(s);
 				if (x2 >= space_needed)
-					UI_PrintStringSmallBuffer(s, gStatusLine + x2 - space_needed);
+					UI_PrintStringBSmallBuffer(s, gStatusLine + x2 - space_needed);
 				break;
 			}
 			case 2: // percentage
@@ -154,7 +204,7 @@ void UI_DisplayStatus()
 				sprintf(s, "%u%%", BATTERY_VoltsToPercent(gBatteryVoltageAverage));
 				space_needed = 7 * strlen(s);
 				if (x2 >= space_needed)
-					UI_PrintStringSmallBuffer(s, gStatusLine + x2 - space_needed);
+					UI_PrintStringBSmallBuffer(s, gStatusLine + x2 - space_needed);
 				break;
 			}
 		}
