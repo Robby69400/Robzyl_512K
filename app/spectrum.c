@@ -1466,7 +1466,7 @@ static void UpdateCssDetection(void) {
     } else if (scanResult == BK4819_CSS_RESULT_CTCSS) {
         uint8_t code = DCS_GetCtcssCode(ctcssFreq);
         if (code < ARRAY_SIZE(CTCSS_Options)) {
-            snprintf(StringCode, sizeof(StringCode), "%u.%u", // субтон аналог Hz
+            snprintf(StringCode, sizeof(StringCode), "%u.%uHz", // субтон аналог Hz
                      CTCSS_Options[code] / 10, CTCSS_Options[code] % 10);
             return;
         }
@@ -3020,8 +3020,8 @@ static void Tick() {
     
     if (gKeylockCountdown > 0) {gKeylockCountdown--;}
     if (AUTO_KEYLOCK && !gKeylockCountdown) {
+      if (!gIsKeylocked) ShowOSDPopup("Locked"); 
       gIsKeylocked = true;
-      ShowOSDPopup("LOCKED"); //Iggy replace this ?
 	  }
   }
 
