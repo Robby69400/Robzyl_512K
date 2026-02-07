@@ -799,7 +799,9 @@ static uint16_t GetRssi(void) {
 }
 
 static void ToggleAudio(bool on) {
-
+  if (on == audioState) {
+    return;
+  }
   audioState = on;
   if (on) {
     GPIO_SetBit(&GPIOC->DATA, GPIOC_PIN_AUDIO_PATH);
@@ -2100,7 +2102,10 @@ static void OnKeyDown(uint8_t key) {
 
       case KEY_1: //SKIP OR SAVE
         Skip();
-        ShowOSDPopup("SKIPPED");  // ← попап при пропуске
+        uint16_t osdPopupSetting_save = osdPopupSetting;
+        osdPopupSetting = 200;
+        ShowOSDPopup("SKIPPED");
+        osdPopupSetting = osdPopupSetting_save;
         break;
      
      case KEY_7:
@@ -3520,24 +3525,23 @@ static void GetParametersText(uint16_t index, char *buffer) {
 }
 
 static void GetBandItemText(uint16_t index, char* buffer) {
-    if (settings.bandEnabled[index]) {
-        sprintf(buffer, "> %d: %-11s", index + 1, BParams[index].BandName);
-    } else {
-        sprintf(buffer, " %d: %-11s", index + 1, BParams[index].BandName);
-    }
+    
+    sprintf(buffer, "%d:%-12s%s", 
+            index + 1, 
+            BParams[index].BandName,
+            settings.bandEnabled[index] ? "*" : "");
 }
 
 static void GetHistoryItemText(uint16_t index, char* buffer) {
-    char freqStr[12];
-    char Name[20] = "";  // запас на имя + "..."
+    char freqStr[10];
+    char Name[12] = ""; // 10 chars max + 1 pour \0 + 1 pour sécurité
     uint8_t dcount;
     uint32_t f = HFreqs[index];
     buffer[0] = '\0';
     if (!f) return;
-
-    // Всегда 5 знаков после точки — нули НЕ обрезаем
-    sprintf(freqStr, "%u.%05u", f / 100000, f % 100000);
-
+    snprintf(freqStr, sizeof(freqStr), "%u.%05u", f / 100000, f % 100000);
+    RemoveTrailZeros(freqStr);
+    
     uint16_t Hchannel = BOARD_gMR_fetchChannel(f);
     
     if (gCounthistory) {
@@ -3549,7 +3553,7 @@ static void GetHistoryItemText(uint16_t index, char* buffer) {
     // Lecture du nom du canal (Argument 1: Index, Argument 2: Buffer)
     if (Hchannel != 0xFFFF) {
         ReadChannelName(Hchannel, Name);
-        Name[19] = '\0';  // безопасность
+        Name[10] = '\0'; // Troncature explicite du nom à 10 caractères max
     }
     
     const char *blacklistPrefix = HBlacklisted[index] ? "#" : "";
