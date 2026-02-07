@@ -17,6 +17,32 @@
   S_STEP_500kHz, */
 
 
+#ifdef ENABLE_SR_BAND
+static const bandparameters BParams[32] = {
+    // BandName       Startfrequency    Stopfrequency   scanStep          modulationType
+    {"AeroCiv1",      11800000,         12750000,       S_STEP_25_0kHz,   MODULATION_AM},
+    {"AeroCiv2",      12750000,         13700000,       S_STEP_25_0kHz,   MODULATION_AM},
+    {"AeroMil",       13800000,         14000000,       S_STEP_25_0kHz,   MODULATION_AM},
+    {"PMR 446",       44600000,         44620000,       S_STEP_6_25kHz,   MODULATION_FM},
+    {"2M",            14500000,         14600000,       S_STEP_12_5kHz,   MODULATION_FM},
+    {"70cm",          43002500,         43400000,       S_STEP_25_0kHz,   MODULATION_FM},
+    {"LPD",           43307500,         43477500,       S_STEP_25_0kHz,   MODULATION_FM},
+    {"PGHM",          15050000,         15100000,       S_STEP_12_5kHz,   MODULATION_FM},
+    {"VHFPro1",       15100000,         15600000,       S_STEP_12_5kHz,   MODULATION_FM},
+    {"VHFPro2",       15744000,         16100000,       S_STEP_12_5kHz,   MODULATION_FM},
+    {"VHFPro3",       16100000,         16300000,       S_STEP_12_5kHz,   MODULATION_FM},
+    {"VHFPro4",       16300000,         16800000,       S_STEP_12_5kHz,   MODULATION_FM},
+    {"VHFPro5",       16800000,         17350000,       S_STEP_12_5kHz,   MODULATION_FM},
+    {"MER",           15630000,         16200000,       S_STEP_5_0kHz,    MODULATION_FM},
+    {"UHFPro1",       40610000,         40800000,       S_STEP_12_5kHz,   MODULATION_FM},
+    {"UHFPro2",       41300000,         42000000,       S_STEP_12_5kHz,   MODULATION_FM},
+    {"UHFPro3",       42300000,         43000000,       S_STEP_12_5kHz,   MODULATION_FM},
+    {"UHFPro4",       44300000,         44700000,       S_STEP_12_5kHz,   MODULATION_FM},
+    {"UHFPro5",       45150000,         45450000,       S_STEP_12_5kHz,   MODULATION_FM},
+    {"UHFPro6",       45600000,         45840000,       S_STEP_12_5kHz,   MODULATION_FM},
+    }; 
+#endif
+
 #ifdef ENABLE_FI_BAND
 static const bandparameters BParams[32] = {
     // BandName        Startfrequency    Stopfrequency    scanStep           modulationType

@@ -84,12 +84,12 @@ static bool gCounthistory = 1;               // case 11
 //ClearHistory                               // case 12      
 //RAM                                        // case 13     
 static uint16_t SpectrumSleepMs = 0;         // case 14
-static uint8_t Noislvl_OFF = 70;             // case 15
-static uint8_t Noislvl_ON = 60;
+static uint8_t Noislvl_OFF = 60;             // case 15
+static uint8_t Noislvl_ON = 50;
 static uint16_t osdPopupSetting = 500;       // case 16
-static uint16_t UOO_trigger = 25;            // case 17
+static uint16_t UOO_trigger = 15;            // case 17
 static uint8_t AUTO_KEYLOCK = AUTOLOCK_OFF;  // case 18
-static uint8_t GlitchMax = 30;                // case 19 
+static uint8_t GlitchMax = 10;                // case 19 
 static bool    SoundBoost = 0;               // case 20 
 #define PARAMETER_COUNT 21
 ////////////////////////////////////////////////////////////////////
@@ -107,8 +107,8 @@ static const uint16_t listenSteps[] = {0, 3, 6, 10, 20, 60, 300, 600, 1200, 1800
 #define LISTEN_STEP_COUNT 9
 
 static uint8_t IndexPS = 0;
-static const char *labelsPS[] = {"OFF","200ms","400ms", "1s", "2s", "5s"};
-static const uint16_t PS_Steps[] = {0, 20, 40, 100, 200, 500}; //in 10 ms
+static const char *labelsPS[] = {"OFF","100ms","500ms", "1s", "2s", "5s"};
+static const uint16_t PS_Steps[] = {0, 10, 50, 100, 200, 500}; //in 10 ms
 #define PS_STEP_COUNT 5
 
 
@@ -1319,6 +1319,10 @@ for (uint8_t x = left_x; x <= right_x; x += dash_step) {
       len = sprintf(&String[pos],"FI ");
 #endif
 
+#ifdef ENABLE_SR_BAND
+      len = sprintf(&String[pos],"SR ");
+#endif
+
 #ifdef ENABLE_PL_BAND
       len = sprintf(&String[pos],"PL ");
 #endif
@@ -1916,8 +1920,8 @@ static void OnKeyDown(uint8_t key) {
               switch(parametersSelectedIndex) {//SEE HERE parametersSelectedIndex
                   case 0: // DelayRssi
                       DelayRssi = isKey3 ? 
-                                 (DelayRssi >= 7 ? 0 : DelayRssi + 1) :
-                                 (DelayRssi <= 0 ? 7 : DelayRssi - 1);
+                                 (DelayRssi >= 12 ? 0 : DelayRssi + 1) :
+                                 (DelayRssi <= 0 ? 12 : DelayRssi - 1);
                       break;
               
                   case 1: // SpectrumDelay
@@ -1996,8 +2000,8 @@ static void OnKeyDown(uint8_t key) {
                       break;
                   case 15: // Noislvl_OFF
                       Noislvl_OFF = isKey3 ? 
-                                 (Noislvl_OFF >= 100 ? 30 : Noislvl_OFF + 2) :
-                                 (Noislvl_OFF <= 30 ? 100 : Noislvl_OFF - 2);
+                                 (Noislvl_OFF >= 100 ? 30 : Noislvl_OFF + 1) :
+                                 (Noislvl_OFF <= 30 ? 100 : Noislvl_OFF - 1);
                       Noislvl_ON = Noislvl_OFF - 10;                      
                       break;
                   case 16: //osdPopupSetting
@@ -2007,8 +2011,8 @@ static void OnKeyDown(uint8_t key) {
                       break;
                   case 17: // UOO_trigger
                       UOO_trigger = isKey3 ? 
-                                 (UOO_trigger >= 50 ? 0 : UOO_trigger + 2) :
-                                 (UOO_trigger <= 0 ? 50 : UOO_trigger - 2);
+                                 (UOO_trigger >= 50 ? 0 : UOO_trigger + 1) :
+                                 (UOO_trigger <= 0 ? 50 : UOO_trigger - 1);
                       break;
                   case 18: // AUTO_KEYLOCK
                       AUTO_KEYLOCK = isKey3 ? 
@@ -2018,7 +2022,7 @@ static void OnKeyDown(uint8_t key) {
                       break;
                   case 19:
                       if (isKey3) {
-                          if (GlitchMax < 80) GlitchMax+=5;
+                          if (GlitchMax < 75) GlitchMax+=5;
                       } else {
                           if (GlitchMax > 0) GlitchMax-=5;
                       }
@@ -2028,14 +2032,12 @@ static void OnKeyDown(uint8_t key) {
                       if(SoundBoost){
                             BK4819_WriteRegister(0x54, 0x90D1);     //default is 0x9009
                             BK4819_WriteRegister(0x55, 0x3271);    //default is 0x31a9
-                              BK4819_WriteRegister(0x75, 0xFC13);    //default is 0xF50B, clear is 0xFC13
-                            // BK4819_WriteRegister(0x54, 0x9009);     //default is 0x9009
-                            //  BK4819_WriteRegister(0x55, 0x31a9);    //default is 0x31a9 
+                            BK4819_WriteRegister(0x75, 0xFC13);    //default is 0xF50B, clear is 0xFC13
                       }
                       else {
                            BK4819_WriteRegister(0x54, 0x9009);
-                             BK4819_WriteRegister(0x55, 0x31a9);
-                           BK4819_WriteRegister(0x75, 0xF50B);    //default is 0xF50B
+                           BK4819_WriteRegister(0x55, 0x31a9);
+                           BK4819_WriteRegister(0x75, 0xF50B);
                       }
                       break;
               }
@@ -2256,8 +2258,8 @@ static void OnKeyDown(uint8_t key) {
         // Цикл по 4 режимам (0 → 1 → 2 → 3 → 0)
         if (Spectrum_state > 3) {Spectrum_state = 0;}
         char sText[32];
-        const char* s[] = {"FREQ", "SLIST", "BANDS", "RANGE"};
-        sprintf(sText, "MOD: %s", s[Spectrum_state]);
+        const char* s[] = {"FREQ", "S LIST", "BAND", "RANGE"};
+        sprintf(sText, "MODE: %s", s[Spectrum_state]);
         ShowOSDPopup(sText);
 
         gRequestedSpectrumState = Spectrum_state;
@@ -3324,16 +3326,16 @@ void ClearSettings()
   gScanRangeStop  = 44000000;
   DelayRssi = 3;
   PttEmission = 2;
-  settings.scanStepIndex = S_STEP_25_0kHz;
+  settings.scanStepIndex = S_STEP_10_0kHz;
   ShowLines = 1; //СТРОКА ПО УМОЛЧАНИЮ
   SpectrumDelay = 0;
   MaxListenTime = 0;
   IndexMaxLT = 0;
   IndexPS = 0;
   Backlight_On_Rx = 1;
-  Noislvl_OFF = 70; 
-  Noislvl_ON = 60;  
-  UOO_trigger = 25;
+  Noislvl_OFF = 62; 
+  Noislvl_ON = 52;  
+  UOO_trigger = 15;
   osdPopupSetting = 500;
   settings.bandEnabled[0] = 1;
   BK4819_WriteRegister(BK4819_REG_10, 0x0145);
@@ -3518,7 +3520,7 @@ static void GetParametersText(uint16_t index, char *buffer) {
            sprintf(buffer, "GlitchMax:%d", GlitchMax);
             break;
         case 20:
-            sprintf(buffer, "Sound Clear: %s", SoundBoost ? "ON" : "OFF");
+            sprintf(buffer, "SoundBoost: %s", SoundBoost ? "ON" : "OFF");
             break;
         
         default:
@@ -3684,6 +3686,10 @@ static void RenderParametersSelect() {
 
 #ifdef ENABLE_FR_BAND
       static void RenderBandSelect() {RenderList("FRA BANDS:", ARRAY_SIZE(BParams),bandListSelectedIndex, bandListScrollOffset, GetBandItemText);}
+#endif
+
+#ifdef ENABLE_SR_BAND
+      static void RenderBandSelect() {RenderList("SR BANDS:", ARRAY_SIZE(BParams),bandListSelectedIndex, bandListScrollOffset, GetBandItemText);}
 #endif
 
 #ifdef ENABLE_IN_BAND
