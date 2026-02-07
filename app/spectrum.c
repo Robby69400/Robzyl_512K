@@ -89,7 +89,7 @@ static uint8_t Noislvl_ON = 50;
 static uint16_t osdPopupSetting = 500;       // case 16
 static uint16_t UOO_trigger = 15;            // case 17
 static uint8_t AUTO_KEYLOCK = AUTOLOCK_OFF;  // case 18
-static uint8_t GlitchMax = 1;                // case 19 
+static uint8_t GlitchMax = 5;                // case 19 
 static bool    SoundBoost = 0;               // case 20 
 #define PARAMETER_COUNT 21
 ////////////////////////////////////////////////////////////////////
@@ -2018,9 +2018,9 @@ static void OnKeyDown(uint8_t key) {
                       break;
                   case 19:
                       if (isKey3) {
-                          if (GlitchMax < 30) GlitchMax++;
+                          if (GlitchMax < 255) GlitchMax+=5;
                       } else {
-                          if (GlitchMax > 0) GlitchMax--;
+                          if (GlitchMax > 0) GlitchMax-=5;
                       }
                       break;
                   case 20: // AF 300 SoundBoost
