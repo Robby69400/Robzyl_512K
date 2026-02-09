@@ -89,8 +89,8 @@ static uint8_t Noislvl_ON = 50;
 static uint16_t osdPopupSetting = 500;       // case 16
 static uint16_t UOO_trigger = 15;            // case 17
 static uint8_t AUTO_KEYLOCK = AUTOLOCK_OFF;  // case 18
-static uint8_t GlitchMax = 10;                // case 19 
-static bool    SoundBoost = 0;               // case 20 
+static uint8_t GlitchMax = 10;               // case 19 
+static bool    SoundBoost = 1;               // case 20 
 #define PARAMETER_COUNT 21
 ////////////////////////////////////////////////////////////////////
 
@@ -2024,7 +2024,7 @@ static void OnKeyDown(uint8_t key) {
                       if (isKey3) {
                           if (GlitchMax < 75) GlitchMax+=5;
                       } else {
-                          if (GlitchMax > 0) GlitchMax-=5;
+                          if (GlitchMax > 10) GlitchMax-=5;
                       }
                       break;
                   case 20: // AF 300 SoundBoost
@@ -2935,8 +2935,10 @@ static void UpdateListening(void) { // called every 10ms
     }
     
     UpdateNoiseOff();
-    //UpdateGlitch();
-    if (!isListening) {UpdateNoiseOn();}
+    if (!isListening) {
+        UpdateNoiseOn();
+        UpdateGlitch();
+    }
         
     spectrumElapsedCount+=300; //in ms
     uint32_t maxCount = (uint32_t)MaxListenTime * 1000;
@@ -3175,7 +3177,9 @@ typedef struct {
     uint8_t Noislvl_OFF;
     uint16_t UOO_trigger;
     uint16_t osdPopupSetting;
+    uint8_t GlitchMax;  
     bool Backlight_On_Rx;
+    bool    SoundBoost;  
 } SettingsEEPROM;
 
 
@@ -3221,6 +3225,8 @@ void LoadSettings(bool LNA)
   UOO_trigger = eepromData.UOO_trigger;
   osdPopupSetting = eepromData.osdPopupSetting;
   Backlight_On_Rx = eepromData.Backlight_On_Rx;
+  GlitchMax = eepromData.GlitchMax;    
+  SoundBoost = eepromData.SoundBoost;    
   ChannelAttributes_t att;
   for (int i = 0; i < MR_CHANNEL_LAST+1; i++) {
     att = gMR_ChannelAttributes[i];
@@ -3264,6 +3270,8 @@ static void SaveSettings()
   eepromData.Noislvl_OFF = Noislvl_OFF;
   eepromData.UOO_trigger = UOO_trigger;
   eepromData.osdPopupSetting = osdPopupSetting;
+  if (GlitchMax < 30) eepromData.GlitchMax  = GlitchMax;    
+  eepromData.SoundBoost = SoundBoost;
   
   for (int i = 0; i < 32; i++) { 
       if (settings.bandEnabled[i]) eepromData.bandListFlags |= (1 << i);
@@ -3333,17 +3341,19 @@ void ClearSettings()
   IndexMaxLT = 0;
   IndexPS = 0;
   Backlight_On_Rx = 1;
-  Noislvl_OFF = 62; 
-  Noislvl_ON = 52;  
+  Noislvl_OFF = 68; 
+  Noislvl_ON = 58;  
   UOO_trigger = 15;
   osdPopupSetting = 500;
+  GlitchMax = 10;  
+  SoundBoost = 1;  
   settings.bandEnabled[0] = 1;
+  
   BK4819_WriteRegister(BK4819_REG_10, 0x0145);
   BK4819_WriteRegister(BK4819_REG_11, 0x01B5);
   BK4819_WriteRegister(BK4819_REG_12, 0x0393);
   BK4819_WriteRegister(BK4819_REG_13, 0x03BE);
   BK4819_WriteRegister(BK4819_REG_14, 0x0019);
-  
   BK4819_WriteRegister(BK4819_REG_40, 13520);
   BK4819_WriteRegister(BK4819_REG_29, 43840);
   BK4819_WriteRegister(BK4819_REG_19, 4161);
@@ -3754,28 +3764,38 @@ static void RenderHistoryList() {
     }
     
     // Draw visible items
-    for (uint8_t i = 0; i < MAX_LINES; i++) {
+    uint8_t linesDrawn = 0; // Compteur réel de lignes écrites à l'écran
+
+    for (uint8_t i = 0; linesDrawn < MAX_LINES; i++) {
         uint16_t itemIndex = i + scrollOffset;
 
+        // Sécurité pour ne pas dépasser le nombre total d'items
         if (itemIndex >= CountValidHistoryItems()) break;
+
         char itemText[32];
         GetHistoryItemText(itemIndex, itemText);
-        //if (strcmp(itemText, "") == 0) 
-        if (itemText[0] == '\0') 
-            {itemIndex--;
-             continue;
-            }
-        uint16_t lineNumber = FIRST_ITEM_LINE + i;
+
+        // Si l'item est vide, on passe au suivant sans incrémenter linesDrawn
+        if (itemText[0] == '\0') {
+            continue; 
+        }
+
+        uint16_t lineNumber = FIRST_ITEM_LINE + linesDrawn;
+
         if (itemIndex == selectedIndex) {
+            // Inversion vidéo pour la sélection
             for (uint8_t x = 0; x < LCD_WIDTH; x++) {
                 for (uint8_t y = lineNumber * 8; y < (lineNumber + 1) * 8; y++) {
-                        PutPixel(x, y, true);
-                    }
+                    PutPixel(x, y, true);
+                }
             }
             UI_PrintStringSmall(itemText, 1, 0, lineNumber, 1);
-            }
-        else {UI_PrintStringSmall(itemText, 1, 0, lineNumber, 0);}
-        } 
+        } else {
+            UI_PrintStringSmall(itemText, 1, 0, lineNumber, 0);
+        }
+
+        linesDrawn++; // On n'incrémente que si on a réellement affiché quelque chose
+    }
 }
 
 #ifdef ENABLE_SCANLIST_SHOW_DETAIL
