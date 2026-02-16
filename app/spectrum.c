@@ -1922,8 +1922,12 @@ static void OnKeyDown(uint8_t key) {
               switch(parametersSelectedIndex) {//SEE HERE parametersSelectedIndex
                   case 0: // DelayRssi
                       DelayRssi = isKey3 ? 
-                                 (DelayRssi >= 12 ? 0 : DelayRssi + 1) :
-                                 (DelayRssi <= 0 ? 12 : DelayRssi - 1);
+                                 (DelayRssi >= 12 ? 1 : DelayRssi + 1) :
+                                 (DelayRssi <= 1 ? 12 : DelayRssi - 1);
+                      const int rssiMap[] = {1, 5, 10, 15, 20};
+                      if (DelayRssi >= 1 && DelayRssi <= 5) {
+                          settings.rssiTriggerLevelUp = rssiMap[DelayRssi - 1];
+                          } else {settings.rssiTriggerLevelUp = 20;}
                       break;
               
                   case 1: // SpectrumDelay
@@ -2100,10 +2104,7 @@ static void OnKeyDown(uint8_t key) {
 
       case KEY_1: //SKIP OR SAVE
         Skip();
-        uint16_t osdPopupSetting_save = osdPopupSetting;
-        osdPopupSetting = 200;
         ShowOSDPopup("SKIPPED");
-        osdPopupSetting = osdPopupSetting_save;
         break;
      
      case KEY_7:
@@ -2991,7 +2992,7 @@ static void Tick() {
   if (gNextTimeslice_10ms) {
     HandleUserInput();
     gNextTimeslice_10ms = 0;
-    //if (isListening || SpectrumMonitor || WaitSpectrum) UpdateListening(); 
+    if (isListening || SpectrumMonitor || WaitSpectrum) UpdateListening(); 
     if(SpectrumPauseCount) SpectrumPauseCount--;
     if (osdPopupTimer > 0) {
         UI_DisplayPopup(osdPopupText);  // Wyświetl aktualny tekst
@@ -3026,7 +3027,7 @@ static void Tick() {
   if (!isListening) {UpdateScan();}
   
   if (gNextTimeslice_display) {
-    if (isListening || SpectrumMonitor || WaitSpectrum) UpdateListening(); // Kolyan test
+    //if (isListening || SpectrumMonitor || WaitSpectrum) UpdateListening(); // Kolyan test
     gNextTimeslice_display = 0;
     latestScanListName[0] = '\0';
     RenderStatus();
