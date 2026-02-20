@@ -530,9 +530,11 @@ void RADIO_SetupRegisters(bool switchToForeground)
     BK4819_WriteRegister(BK4819_REG_48,
     (11u << 12) |     // оставляем
     ( 0u << 10) |     // AF Rx Gain-1 = 0dB
-    (62u <<  4) |     // AF Rx Gain-2 = Max
-    (12u <<  0));     // AF DAC Gain = 12 (loud and clear)
-	BK4819_InitAGC(gTxVfo->Modulation);
+    //TEST KAMILS (62u <<  4) |     // AF Rx Gain-2 = Max
+    //TEST KAMILS (12u <<  0));     // AF DAC Gain = 12 (loud and clear)
+	(gEeprom.VOLUME_GAIN << 4) |     // AF Rx Gain-2 
+	(gEeprom.DAC_GAIN    << 0));     // AF DAC Gain (after Gain-1 and Gain-2)
+	//TEST KAMILS BK4819_InitAGC(gTxVfo->Modulation);
 	
 	uint16_t InterruptMask = BK4819_REG_3F_SQUELCH_FOUND | BK4819_REG_3F_SQUELCH_LOST;
 
@@ -596,11 +598,11 @@ void RADIO_SetupRegisters(bool switchToForeground)
 		FUNCTION_Select(FUNCTION_FOREGROUND);
 
 
-    BK4819_WriteRegister(0x13, 0xB3A8);  // LNA сток
-    BK4819_WriteRegister(0x10, 0xF3A8);  // Mixer сток
-    BK4819_WriteRegister(0x12, 0xB3A8);  // аттенюатор авто/ON
-    BK4819_SetFilterBandwidth(gTxVfo->CHANNEL_BANDWIDTH, false);
-    BK4819_WriteRegister(BK4819_REG_48, 0xB3A8);
+    //TEST KAMILS BK4819_WriteRegister(0x13, 0xB3A8);  // LNA сток
+    //TEST KAMILS BK4819_WriteRegister(0x10, 0xF3A8);  // Mixer сток
+    //TEST KAMILS BK4819_WriteRegister(0x12, 0xB3A8);  // аттенюатор авто/ON
+    //TEST KAMILS BK4819_SetFilterBandwidth(gTxVfo->CHANNEL_BANDWIDTH, false);
+    //TEST KAMILS BK4819_WriteRegister(BK4819_REG_48, 0xB3A8);
 
 }
 
@@ -681,7 +683,7 @@ void RADIO_SetModulation(ModulationMode_t modulation)
 
 	BK4819_SetAF(mod);
 	BK4819_SetRegValue(afDacGainRegSpec, 0xF);
-	//BK4819_WriteRegister(BK4819_REG_3D, modulation == MODULATION_SSB ? 0 : 0x2AAB);
+	BK4819_WriteRegister(BK4819_REG_3D, modulation == MODULATION_SSB ? 0 : 0x2AAB); //TEST KAMILS 
 	BK4819_SetRegValue(afcDisableRegSpec, modulation != MODULATION_FM);
 }
 

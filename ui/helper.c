@@ -213,7 +213,7 @@ void UI_PrintStringSmallBuffer(const char *pString, uint8_t *buffer)
 	}
 }
 
-void UI_PrintStringBSmallBuffer(const char *pString, uint8_t *buffer)
+/* void UI_PrintStringSmallBuffer(const char *pString, uint8_t *buffer)
 {
 	size_t i;
 	const unsigned int char_width   = ARRAY_SIZE(gFontBSmall[0]);
@@ -227,7 +227,7 @@ void UI_PrintStringBSmallBuffer(const char *pString, uint8_t *buffer)
 				memmove(buffer + (i * char_spacing) + 1, &gFontBSmall[index], char_width);
 		}
 	}
-}
+} */
 
 void UI_DisplayFrequency(const char *string, uint8_t X, uint8_t Y, bool center)
 {

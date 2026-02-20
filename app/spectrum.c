@@ -938,7 +938,6 @@ static void ResetModifiers() {
   for (int i = 0; i < 128; ++i) {
     if (rssiHistory[i] == RSSI_MAX_VALUE) rssiHistory[i] = 0;
   }
-  if(appMode==CHANNEL_MODE){LoadValidMemoryChannels();}
   RelaunchScan();
 }
 
@@ -1037,10 +1036,11 @@ LogUart(str); */
 }
 
 static void UpdateDBMaxAuto() { //Zoom
-  static uint8_t z = 3;
+  static uint8_t z = 10;
   int newDbMax;
     if (scanInfo.rssiMax > 0) {
-        newDbMax = clamp(Rssi2DBm(scanInfo.rssiMax), -100, 0);
+        //newDbMax = clamp(Rssi2DBm(scanInfo.rssiMax), -100, 0);
+        newDbMax = Rssi2DBm(scanInfo.rssiMax);
 
         if (newDbMax > settings.dbMax + z) {
             settings.dbMax = settings.dbMax + z;   // montée limitée
@@ -1052,7 +1052,8 @@ static void UpdateDBMaxAuto() { //Zoom
     }
 
     if (scanInfo.rssiMin > 0) {
-        settings.dbMin = clamp(Rssi2DBm(scanInfo.rssiMin), -160, -110);
+        //settings.dbMin = clamp(Rssi2DBm(scanInfo.rssiMin), -160, -110);
+        settings.dbMin = Rssi2DBm(scanInfo.rssiMin);
     }
 }
 
@@ -2948,7 +2949,7 @@ static void UpdateListening(void) { // called every 10ms
         UpdateGlitch();
     }
         
-    spectrumElapsedCount+=300; //in ms
+    spectrumElapsedCount += 10; //in ms
     uint32_t maxCount = (uint32_t)MaxListenTime * 1000;
 
     if (MaxListenTime && spectrumElapsedCount >= maxCount) {

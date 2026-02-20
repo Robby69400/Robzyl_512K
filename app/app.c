@@ -305,17 +305,17 @@ if (gEeprom.FlashlightOnRX && (Function == FUNCTION_RECEIVE || Function == FUNCT
 	gVFO_RSSI_bar_level[(chan + 1) & 1u] = 0;
 
 	AUDIO_AudioPathOn();
-	//VFO sensitivity test KOLYAN ToggleAFDAC
-  	uint32_t Reg = regs_cache[BK4819_REG_30];
-  	Reg &= ~(1 << 9);
-  	Reg |= (1 << 9);
-  	BK4819_WriteRegister(BK4819_REG_30, Reg);
-	
-	//VFO sensitivity test KOLYAN ToggleAFBit
-  	uint32_t reg = regs_cache[BK4819_REG_47];
-  	reg &= ~(1 << 8);
-  	reg |= 1 << 8;
-  	BK4819_WriteRegister(BK4819_REG_47, reg);
+	//TEST KAMILS //VFO sensitivity test KOLYAN ToggleAFDAC
+  	//TEST KAMILS uint32_t Reg = regs_cache[BK4819_REG_30];
+  	//TEST KAMILS Reg &= ~(1 << 9);
+  	//TEST KAMILS Reg |= (1 << 9);
+  	//TEST KAMILS BK4819_WriteRegister(BK4819_REG_30, Reg);
+	//TEST KAMILS 
+	//TEST KAMILS //VFO sensitivity test KOLYAN ToggleAFBit
+  	//TEST KAMILS uint32_t reg = regs_cache[BK4819_REG_47];
+  	//TEST KAMILS reg &= ~(1 << 8);
+  	//TEST KAMILS reg |= 1 << 8;
+  	//TEST KAMILS BK4819_WriteRegister(BK4819_REG_47, reg);
 
  	
 	gEnableSpeaker = true;

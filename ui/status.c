@@ -56,7 +56,7 @@ void UI_DisplayStatus()
 		// === Индикаторы TX / RX / PS — мелким шрифтом как у батареи (позиция по POS_...) ===
 	if (gCurrentFunction == FUNCTION_TRANSMIT)
 	{
-		UI_PrintStringBSmallBuffer("TX", gStatusLine + POS_TX);
+		UI_PrintStringSmallBuffer("TX", gStatusLine + POS_TX);
 
 		sprintf(time_str, "%02u:%02u", txTimeSeconds / 60, txTimeSeconds % 60);
 		UI_PrintStringSmallBuffer(time_str, gStatusLine + TIME_POS_X);
@@ -65,14 +65,14 @@ void UI_DisplayStatus()
 	         gCurrentFunction == FUNCTION_MONITOR ||
 	         gCurrentFunction == FUNCTION_INCOMING)
 	{
-		UI_PrintStringBSmallBuffer("RX", gStatusLine + POS_RX);
+		UI_PrintStringSmallBuffer("RX", gStatusLine + POS_RX);
 
 		sprintf(time_str, "%02u:%02u", rxTimeSeconds / 60, rxTimeSeconds % 60);
 		UI_PrintStringSmallBuffer(time_str, gStatusLine + TIME_POS_X);
 	}
 	else if (gCurrentFunction == FUNCTION_POWER_SAVE)
 	{
-		UI_PrintStringBSmallBuffer("PS", gStatusLine + POS_PS);
+		UI_PrintStringSmallBuffer("PS", gStatusLine + POS_PS);
 	}
 
 		// === Индикатор функции фонарика при приеме "L" ===
@@ -179,7 +179,7 @@ gStatusLine[POS_B + 14] |= 0x0C;
                 start_x = LCD_WIDTH - 20 - space_needed;
             }
 
-            UI_PrintStringBSmallBuffer(meterStr, gStatusLine + start_x);
+            UI_PrintStringSmallBuffer(meterStr, gStatusLine + start_x);
         }
     }
 	// === Battery voltage / percentage ===
@@ -196,7 +196,7 @@ gStatusLine[POS_B + 14] |= 0x0C;
 				sprintf(s, "%u.%02uV", voltage / 100, voltage % 100);
 				space_needed = 7 * strlen(s);
 				if (x2 >= space_needed)
-					UI_PrintStringBSmallBuffer(s, gStatusLine + x2 - space_needed);
+					UI_PrintStringSmallBuffer(s, gStatusLine + x2 - space_needed);
 				break;
 			}
 			case 2: // percentage
@@ -204,7 +204,7 @@ gStatusLine[POS_B + 14] |= 0x0C;
 				sprintf(s, "%u%%", BATTERY_VoltsToPercent(gBatteryVoltageAverage));
 				space_needed = 7 * strlen(s);
 				if (x2 >= space_needed)
-					UI_PrintStringBSmallBuffer(s, gStatusLine + x2 - space_needed);
+					UI_PrintStringSmallBuffer(s, gStatusLine + x2 - space_needed);
 				break;
 			}
 		}

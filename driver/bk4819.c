@@ -76,14 +76,10 @@ void BK4819_Init(void)
 
 	BK4819_WriteRegister(BK4819_REG_00, 0x8000);
 	BK4819_WriteRegister(BK4819_REG_00, 0x0000);
-
+	
 	BK4819_WriteRegister(BK4819_REG_37, 0x1D0F); //0001110100001111
 	BK4819_WriteRegister(BK4819_REG_36, 0x0022);
-	//BK4819_WriteRegister(0x54, 0x9009);   	//default is 0x9009
-    //BK4819_WriteRegister(0x55, 0x31a9);		//default is 0x31a9
-	//BK4819_WriteRegister(0x75, 0xF50B);
-	
-	//BK4819_SetDefaultAmplifierSettings();
+	BK4819_WriteRegister(BK4819_REG_13, 0x03BE); //TEST KAMILS //BK4819_SetDefaultAmplifierSettings();
 
 	BK4819_WriteRegister(BK4819_REG_19, 0b0001000001000001);   // <15> MIC AGC  1 = disable  0 = enable
 
@@ -121,12 +117,11 @@ void BK4819_Init(void)
 
 	BK4819_WriteRegister(BK4819_REG_33, 0x9000);
 	BK4819_WriteRegister(BK4819_REG_3F, 0);
-	BK4819_WriteRegister(BK4819_REG_73, 0x4692);
+	//TEST KAMILS BK4819_WriteRegister(BK4819_REG_73, 0x4692);
 
 	SYSTEM_DelayMs(50);  // Delay 50ms after init to wake up BK4819 ЧИНИМ ПРИЕМ ПОСЛЕ ВКЛЮЧЕНИЯ
-BK4819_RX_TurnOn();  // Force RX on
-SYSTEM_DelayMs(10);  // Small delay for PLL lock
-
+	BK4819_RX_TurnOn();  // Force RX on
+	SYSTEM_DelayMs(10);  // Small delay for PLL lock
 }
 
 static uint16_t BK4819_ReadU16(void) {
@@ -294,11 +289,11 @@ void BK4819_InitAGC(ModulationMode_t modulation)
 		BK4819_WriteRegister(BK4819_REG_49, (0 << 14) | (84 << 7) | (66 << 0));
 		}
 	LoadSettings(1);
-	BK4819_WriteRegister(BK4819_REG_7B, 0x8420); //Test 4.15
-/* 	BK4819_WriteRegister(BK4819_REG_12, 0x0393);  // 0x037B / 000000 11 011 11 011 / -24dB
-	BK4819_WriteRegister(BK4819_REG_11, 0x01B5);  // 0x027B / 000000 10 011 11 011 / -43dB
-	BK4819_WriteRegister(BK4819_REG_10, 0x0145);  // 0x007A / 000000 00 011 11 010 / -58dB
-	BK4819_WriteRegister(BK4819_REG_14, 0x0019);  // 0x0019 / 000000 00 000 11 001 / -84dB */
+	//TEST KAMILS BK4819_WriteRegister(BK4819_REG_7B, 0x8420); //Test 4.15
+	BK4819_WriteRegister(BK4819_REG_12, 0x0393);  // 0x037B / 000000 11 011 11 011 / -24dB //TEST KAMILS 
+	BK4819_WriteRegister(BK4819_REG_11, 0x01B5);  // 0x027B / 000000 10 011 11 011 / -43dB //TEST KAMILS 
+	BK4819_WriteRegister(BK4819_REG_10, 0x0145);  // 0x007A / 000000 00 011 11 010 / -58dB //TEST KAMILS 
+	BK4819_WriteRegister(BK4819_REG_14, 0x0019);  // 0x0019 / 000000 00 000 11 001 / -84dB //TEST KAMILS 
 }
 
 void BK4819_InitAGCSpectrum(ModulationMode_t modulation)
