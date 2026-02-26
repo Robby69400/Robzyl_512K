@@ -683,7 +683,7 @@ void APP_TimeSlice10ms(void)
 
 	if (gCurrentFunction == FUNCTION_TRANSMIT)
 	{	// transmitting
-			if ((gFlashLightBlinkCounter % (150 / 10)) == 0) // once every 150ms
+			if ((gFlashLightBlinkCounter % 15) == 0) // once every 150ms
 				UI_DisplayAudioBar();
 	}
 

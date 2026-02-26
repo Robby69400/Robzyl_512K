@@ -1,5 +1,5 @@
 AUTHOR_STRING := ""
-VERSION_STRING := V6.6_B2
+VERSION_STRING := V6.6_B3
 # compile options (see README.md for descriptions)
 # 0 = disable
 # 1 = enable
@@ -46,6 +46,7 @@ ENABLE_SCANLIST_SHOW_DETAIL		   		:= 1
 ENABLE_EEPROM_512K				   		:= 0
 ENABLE_4732								:= 0
 ENABLE_DEV								:= 0
+ENABLE_SPECTRUM_LINES					:= 0
 
 #############################################################
 
@@ -370,6 +371,10 @@ ifeq ($(ENABLE_4732),1)
 endif
 ifeq ($(ENABLE_DEV),1)
 	CFLAGS  += -DENABLE_DEV
+endif
+
+ifeq ($(ENABLE_SPECTRUM_LINES),1)
+	CFLAGS  += -DENABLE_SPECTRUM_LINES
 endif
 
 LDFLAGS =
