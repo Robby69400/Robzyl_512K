@@ -381,6 +381,8 @@ static void RelaunchScan();
 static void ResetInterrupts();
 static char StringCode[10] = "";
 
+static bool parametersStateInitialized = false;
+
 //
 static char osdPopupText[32] = "";
 
@@ -390,6 +392,31 @@ static void ShowOSDPopup(const char *str)
     strncpy(osdPopupText, str, sizeof(osdPopupText)-1);
     osdPopupText[sizeof(osdPopupText)-1] = '\0';  // Zabezpieczenie przed przepełnieniem
 }
+
+static uint32_t stillFreq = 0;
+static uint32_t GetInitialStillFreq(void) {
+    uint32_t f = 0;
+
+    if (historyListActive) {
+        f = HFreqs[historyListIndex];
+    } else if (SpectrumMonitor) {
+        f = lastReceivingFreq;
+    } else if (gIsPeak) {
+        f = peak.f;
+    } else {
+        f = scanInfo.f;
+    }
+
+    if (f < 1400000 || f > 130000000) {
+        if (scanInfo.f >= 1400000 && scanInfo.f <= 130000000) return scanInfo.f;
+        if (currentFreq >= 1400000 && currentFreq <= 130000000) return currentFreq;
+        return gScanRangeStart; // ostateczny fallback
+    }
+
+    return f;
+}
+
+
 
 /* static void DebugHistoryState(const char* tag)
 {
@@ -1910,10 +1937,14 @@ static void OnKeyDown(uint8_t key) {
           }
           return;     
     }
-    SetState(PARAMETERS_SELECT );
-    parametersSelectedIndex = 0;
-    parametersScrollOffset = 0;
-    return; // Key handled
+    SetState(PARAMETERS_SELECT);
+
+    if (!parametersStateInitialized) {
+        parametersSelectedIndex = 0;
+        parametersScrollOffset = 0;
+        parametersStateInitialized = true;
+    }
+    return;
     }
     
     // If we're in band selection mode, use dedicated key logic
@@ -2470,15 +2501,27 @@ static void OnKeyDown(uint8_t key) {
           // обновляем индикатор режима
         break;
   
-    case KEY_SIDE1:
-        if (SPECTRUM_PAUSED) return;
-        SpectrumMonitor++;
-        if (SpectrumMonitor > 2) SpectrumMonitor = 0; // 0 normal, 1 Freq lock, 2 Monitor
-		    char monitorText[32];
-        const char* modes[] = {"NORMAL", "FREQ LOCK", "MONITOR"};
-    	      sprintf(monitorText, "MODE: %s", modes[SpectrumMonitor]);
-	      ShowOSDPopup(monitorText);
-        if(SpectrumMonitor == 2) ToggleRX(1);
+case KEY_SIDE1:
+    if (SPECTRUM_PAUSED) return;
+    SpectrumMonitor++;
+    if (SpectrumMonitor > 2) SpectrumMonitor = 0; // 0 normal, 1 Freq lock, 2 Monitor
+
+    if (SpectrumMonitor == 1) {
+        // jeśli nie ma ostatniego RX, użyj aktualnego skanowania
+        if (lastReceivingFreq < 1400000 || lastReceivingFreq > 130000000) {
+            lastReceivingFreq = (scanInfo.f >= 1400000) ? scanInfo.f : gScanRangeStart;
+        }
+        peak.f = lastReceivingFreq;
+        scanInfo.f = lastReceivingFreq;
+        SetF(lastReceivingFreq);
+    }
+
+    if (SpectrumMonitor == 2) ToggleRX(1);
+
+    char monitorText[32];
+    const char* modes[] = {"NORMAL", "FREQ LOCK", "MONITOR"};
+    sprintf(monitorText, "MODE: %s", modes[SpectrumMonitor]);
+    ShowOSDPopup(monitorText);
     break;
 
     case KEY_SIDE2:
@@ -2506,13 +2549,20 @@ static void OnKeyDown(uint8_t key) {
       ExitAndCopyToVfo();
       break;
   
-  case KEY_MENU: //History
+case KEY_MENU: //History
       uint16_t validCount = 0;
       for (uint16_t k = 1; k < HISTORY_SIZE; k++) {
           if (HFreqs[k]) {validCount++;}
       }
       if (historyListActive == true) {scanInfo.f = HFreqs[historyListIndex];}
-      SetState(STILL);      
+      SetState(STILL);
+
+      stillFreq = GetInitialStillFreq();
+      if (stillFreq >= 1400000 && stillFreq <= 130000000) {
+          scanInfo.f = stillFreq;
+          peak.f = stillFreq;
+          SetF(stillFreq);
+      }
   break;
 
   case KEY_EXIT: //exit from history or spectrum
@@ -2592,26 +2642,29 @@ static void OnKeyDownStill(KEY_Code_t key) {
       case KEY_9:
         ToggleModulation();
       break;
-      case KEY_UP:
-          if (stillEditRegs) {
-            SetRegMenuValue(stillRegSelected, true);
-          } else if (SpectrumMonitor > 0) {
-                    uint32_t step = GetScanStep();
-                    peak.f += step;
-                    scanInfo.f = peak.f;
-                    SetF(peak.f);
-          }
-          break;
-      case KEY_DOWN:
-          if (stillEditRegs) {
-            SetRegMenuValue(stillRegSelected, false);
-          } else if (SpectrumMonitor > 0) {
-                    uint32_t step = GetScanStep();
-                    if (peak.f > step) peak.f -= step;
-                    scanInfo.f = peak.f;
-                    SetF(peak.f);
-                }
-          break;
+case KEY_UP:
+    if (stillEditRegs) {
+        SetRegMenuValue(stillRegSelected, true);
+    } else if (SpectrumMonitor > 0) {
+        uint32_t step = GetScanStep();
+        stillFreq += step;
+        scanInfo.f = stillFreq;
+        peak.f = stillFreq;
+        SetF(stillFreq);
+    }
+    break;
+
+case KEY_DOWN:
+    if (stillEditRegs) {
+        SetRegMenuValue(stillRegSelected, false);
+    } else if (SpectrumMonitor > 0) {
+        uint32_t step = GetScanStep();
+        if (stillFreq > step) stillFreq -= step;
+        scanInfo.f = stillFreq;
+        peak.f = stillFreq;
+        SetF(stillFreq);
+    }
+    break;
       case KEY_2: // przewijanie w górę po liście rejestrów
           if (stillEditRegs && stillRegSelected > 0) {
             stillRegSelected--;
@@ -2644,11 +2697,21 @@ static void OnKeyDownStill(KEY_Code_t key) {
       case KEY_7:
       break;
           
-      case KEY_SIDE1: 
-          SpectrumMonitor++;
-          if (SpectrumMonitor > 2) SpectrumMonitor = 0; // 0 normal, 1 Freq lock, 2 Monitor
-          if(SpectrumMonitor == 2) ToggleRX(1);
-      break;
+case KEY_SIDE1:
+    SpectrumMonitor++;
+    if (SpectrumMonitor > 2) SpectrumMonitor = 0;
+
+    if (SpectrumMonitor == 1) {
+        if (lastReceivingFreq < 1400000 || lastReceivingFreq > 130000000) {
+            lastReceivingFreq = (stillFreq >= 1400000) ? stillFreq : scanInfo.f;
+        }
+        peak.f = lastReceivingFreq;
+        scanInfo.f = lastReceivingFreq;
+        SetF(lastReceivingFreq);
+    }
+
+    if (SpectrumMonitor == 2) ToggleRX(1);
+    break;
 
       case KEY_SIDE2: 
             Blacklist();
@@ -2899,11 +2962,11 @@ static void RenderStill() {
   char freqStr[18];
   //if (SpectrumMonitor) FormatFrequency(HFreqs[historyListIndex], freqStr, sizeof(freqStr));
   //else
-  FormatFrequency(scanInfo.f, freqStr, sizeof(freqStr));
+  FormatFrequency(stillFreq, freqStr, sizeof(freqStr));
   UI_DisplayFrequency(freqStr, 0, 0, 0);
   DrawMeter(2);
   sLevelAttributes sLevelAtt;
-  sLevelAtt = GetSLevelAttributes(scanInfo.rssi, scanInfo.f);
+  sLevelAtt = GetSLevelAttributes(scanInfo.rssi, stillFreq);
 
   if(sLevelAtt.over > 0)
     snprintf(String, sizeof(String), "S%2d+%2d", sLevelAtt.sLevel, sLevelAtt.over);
@@ -3221,7 +3284,9 @@ static void Tick() {
         if (osdPopupTimer <= 0) {osdPopupText[0] = '\0';}
         return;
     }
-gScanRateTimerMs += 10;
+
+if (classic && ShowLines == 4) {
+	gScanRateTimerMs += 10;
 if (gScanRateTimerMs >= 1000) {
     uint32_t delta = gScanStepsTotal - gScanStepsLast;
     uint32_t elapsed = gScanRateTimerMs;
@@ -3233,6 +3298,13 @@ if (gScanRateTimerMs >= 1000) {
 
     gScanRateTimerMs = 0;
 }
+} else {
+    // reset gdy BENCH niewidoczny
+    gScanRateTimerMs = 0;
+    gScanStepsLast = gScanStepsTotal;
+}
+
+
   }
 
   if (SPECTRUM_PAUSED && (SpectrumPauseCount == 0)) {
