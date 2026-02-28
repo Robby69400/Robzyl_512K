@@ -275,6 +275,7 @@ void BK4819_InitAGC(ModulationMode_t modulation)
 		}
 	
 	BK4819_WriteRegister(BK4819_REG_7B, 0x8420); //Test 4.15
+	BK4819_WriteRegister(BK4819_REG_24, 0); //Test Disable DTMF
 }
 
 void BK4819_InitAGCSpectrum(ModulationMode_t modulation)

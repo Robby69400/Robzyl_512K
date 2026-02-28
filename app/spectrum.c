@@ -59,6 +59,13 @@ static volatile uint8_t gRequestedSpectrumState = 0;
   #define HISTORY_SIZE 500
 #endif
 
+static uint8_t cachedValidScanListCount = 0;
+static uint8_t cachedEnabledScanListCount = 0;
+static bool scanListCountsDirty = true;
+static uint32_t gScanStepsTotal = 0;
+static uint32_t gScanStepsLast = 0;
+static uint16_t gScanRate_x10 = 0;     // CH/s *10
+static uint16_t gScanRateTimerMs = 0;  // akumulator czasu
 
 static uint16_t historyListIndex = 0;
 static uint16_t indexFs = 0;
@@ -1612,6 +1619,33 @@ static void DrawF(uint32_t f) {
               GUI_DisplaySmallestDark	("<", 118, 17, false, false);
               ArrowLine = 3;
             }
+if (ShowLines == 4) {
+    uint32_t totalSteps = (appMode == CHANNEL_MODE) ? scanChannelsCount : (GetStepsCount() + 1);
+
+    char lineBench1[19];
+    char lineBench2[19];
+
+    snprintf(lineBench1, sizeof(lineBench1), "CH/s:%u.%u",
+             gScanRate_x10 / 10, gScanRate_x10 % 10);
+
+    if (gScanRate_x10 > 0 && totalSteps > 0) {
+        // FULL w setnych sekundy
+    
+		uint64_t full_x100 = ((uint64_t)totalSteps * 1000ull) / gScanRate_x10;
+        snprintf(lineBench2, sizeof(lineBench2), "FULL:%u.%02us",
+                 (unsigned)(full_x100 / 100),
+                 (unsigned)(full_x100 % 100));
+    } else {
+        snprintf(lineBench2, sizeof(lineBench2), "FULL:---");
+    }
+
+    UI_PrintStringSmall(lineBench1, 1, LCD_WIDTH - 1, 0, 0);
+    UI_PrintStringSmall(lineBench2, 1, LCD_WIDTH - 1, 1, 0);
+    GUI_DisplaySmallestDark(line3, 18, 17, false, true);
+    GUI_DisplaySmallestDark(">", 8, 17, false, false);
+    GUI_DisplaySmallestDark("<", 118, 17, false, false);
+    ArrowLine = 3;
+}
     if (Fmax) 
       {
           FormatFrequency(Fmax, freqStr, sizeof(freqStr));
@@ -1675,21 +1709,40 @@ static void LookupChannelModulation() {
 
 }
 
+static void UpdateScanListCountsCached(void) {
+    if (!scanListCountsDirty) return;
+
+    BuildValidScanListIndices();
+    cachedValidScanListCount = validScanListCount;
+    cachedEnabledScanListCount = 0;
+
+    for (uint8_t i = 0; i < cachedValidScanListCount; i++) {
+        uint8_t realIndex = validScanListIndices[i];
+        if (settings.scanListEnabled[realIndex]) {
+            cachedEnabledScanListCount++;
+        }
+    }
+
+    scanListCountsDirty = false;
+}
 
 static void DrawNums() {
-  if (appMode==CHANNEL_MODE) 
-  {
-    if (scanChannelsCount > 0) {
-    sprintf(String, "M:%d", scanChannel[0]+1);
-    GUI_DisplaySmallest(String, 2, Bottom_print, false, true);
+if (appMode==CHANNEL_MODE) 
+{
+  UpdateScanListCountsCached();
 
-      if (scanChannelsCount > 1) {
-        sprintf(String, "M:%d", scanChannel[scanChannelsCount-1]+1);
-    GUI_DisplaySmallest(String, 108, Bottom_print, false, true);
-  }
-    }
-    return;
-  }
+  uint8_t displayEnabled = (cachedEnabledScanListCount == 0)
+      ? cachedValidScanListCount
+      : cachedEnabledScanListCount;
+
+  sprintf(String, "SL:%u/%u", displayEnabled, cachedValidScanListCount);
+  GUI_DisplaySmallest(String, 2, Bottom_print, false, true);
+
+  sprintf(String, "CH:%u", scanChannelsCount);
+  GUI_DisplaySmallest(String, 96, Bottom_print, false, true);
+
+  return;
+}
 
   if(appMode!=CHANNEL_MODE){
     sprintf(String, "%u.%05u", gScanRangeStart / 100000, gScanRangeStart % 100000);
@@ -1716,6 +1769,8 @@ static void nextFrequency833() {
 
 static void NextScanStep() {
     spectrumElapsedCount = 0;
+
+	gScanStepsTotal++;
 
     if (appMode==CHANNEL_MODE)
     { 
@@ -2260,7 +2315,7 @@ static void OnKeyDown(uint8_t key) {
         }
       break;
 
-    case KEY_8://СМЕНА РЕЖИМА
+    case KEY_8://zmiana widoku
       if (historyListActive) {
           memset(HFreqs,0,sizeof(HFreqs));
           memset(HCount,0,sizeof(HCount));
@@ -2271,12 +2326,13 @@ static void OnKeyDown(uint8_t key) {
           SpectrumMonitor = 0;
       } else {
           if (classic){
-              ShowLines++;
-              if (ShowLines > 3 || ShowLines < 1) ShowLines = 1;
-              char viewText[24];
-              const char *viewName = "CLASSIC";
-              if (ShowLines == 2) viewName = "BIG";
-              else if (ShowLines == 3) viewName = "LAST RX";
+			ShowLines++;
+			if (ShowLines > 4 || ShowLines < 1) ShowLines = 1;
+			char viewText[24];
+			const char *viewName = "CLASSIC";
+				if (ShowLines == 2) viewName = "BIG";
+				else if (ShowLines == 3) viewName = "LAST RX";
+				else if (ShowLines == 4) viewName = "BENCH";
               sprintf(viewText, "VIEW: %s", viewName);
               ShowOSDPopup(viewText);
           }
@@ -2977,6 +3033,8 @@ if (kbd.counter == 2 || (kbd.counter > 22 && (kbd.counter % 20 == 0))) {
 }
 
 static void NextHistoryScanStep() {
+
+	gScanStepsTotal++;
     uint16_t count = CountValidHistoryItems();
     if (count == 0) return;
 
@@ -3016,6 +3074,7 @@ static void UpdateScan() {
   // Si un signal est trouvé (gIsPeak), la fonction s'arrête ici grâce au return ci-dessus
   // au prochain passage (via UpdateListening).
   if(gIsPeak || SpectrumMonitor || WaitSpectrum) return;
+  
 
   // --- MODIFICATION ICI ---
   if (gHistoryScan && historyListActive) {
@@ -3162,7 +3221,18 @@ static void Tick() {
         if (osdPopupTimer <= 0) {osdPopupText[0] = '\0';}
         return;
     }
+gScanRateTimerMs += 10;
+if (gScanRateTimerMs >= 1000) {
+    uint32_t delta = gScanStepsTotal - gScanStepsLast;
+    uint32_t elapsed = gScanRateTimerMs;
 
+    gScanStepsLast = gScanStepsTotal;
+
+    // CH/s *10 (zaokrąglenie)
+    gScanRate_x10 = (delta * 10000 + elapsed / 2) / elapsed;
+
+    gScanRateTimerMs = 0;
+}
   }
 
   if (SPECTRUM_PAUSED && (SpectrumPauseCount == 0)) {
@@ -3193,7 +3263,13 @@ static void Tick() {
     latestScanListName[0] = '\0';
     RenderStatus();
     Render();
-  } 
+  }
+
+/* if (gNextTimeslice_1s) {
+    gScanStepsPerSecond = gScanStepsThisSecond;
+    gScanStepsThisSecond = 0;
+    gNextTimeslice_1s = 0;   // <<< DODAJ
+}  */
 }
 
 
@@ -3307,6 +3383,7 @@ static void ToggleScanList(int scanListNumber, int single )
         if (single) {memset(settings.scanListEnabled, 0, sizeof(settings.scanListEnabled));}
         settings.scanListEnabled[scanListNumber] = !settings.scanListEnabled[scanListNumber];
       }
+	  scanListCountsDirty = true;
   }
 
 
@@ -3388,7 +3465,7 @@ void LoadSettings(bool LNA)
   PttEmission = eepromData.PttEmission;
   validScanListCount = 0;
   ShowLines = eepromData.ShowLines;
-  if (ShowLines < 1 || ShowLines > 3) ShowLines = 1;
+  if (ShowLines < 1 || ShowLines > 4) ShowLines = 1;
   SpectrumDelay = eepromData.SpectrumDelay;
   
   IndexMaxLT = eepromData.IndexMaxLT;
@@ -3424,6 +3501,7 @@ void LoadSettings(bool LNA)
   }
 #endif
 SettingsLoaded = true;
+scanListCountsDirty = true;
 }
 
 static void SaveSettings() 
@@ -3857,17 +3935,25 @@ static void RenderList(const char* title, uint16_t numItems, uint16_t selectedIn
     ST7565_BlitFullScreen();
 }
 
-
-
-// Wrapper functions for original calls
-
-// Fonction pour afficher le menu ScanList
 static void RenderScanListSelect() {
   BuildValidScanListIndices();
   uint16_t selectedChannels = 0;
+  uint16_t totalChannels = 0;
+  bool anyListSelected = false;
+
   for (uint8_t i = 0; i < validScanListCount; i++) {
     uint8_t realIndex = validScanListIndices[i];
+
+    // zlicz kanały w tej liście do sumy "wszystkich"
+    for (uint16_t j = 0; j < MR_CHANNEL_LAST + 1; j++) {
+      if (gMR_ChannelAttributes[j].scanlist == realIndex + 1) {
+        totalChannels++;
+      }
+    }
+
+    // jeśli lista zaznaczona - sumuj osobno
     if (settings.scanListEnabled[realIndex]) {
+      anyListSelected = true;
       for (uint16_t j = 0; j < MR_CHANNEL_LAST + 1; j++) {
         if (gMR_ChannelAttributes[j].scanlist == realIndex + 1) {
           selectedChannels++;
@@ -3875,9 +3961,13 @@ static void RenderScanListSelect() {
       }
     }
   }
-  char title[24];
-  snprintf(title, sizeof(title), "SCANLISTS: %u/%u", validScanListCount, selectedChannels);
-  RenderList(title, validScanListCount,scanListSelectedIndex, scanListScrollOffset, GetFilteredScanListText, true);
+
+  // jeśli nic nie zaznaczone → użyj sumy wszystkich kanałów
+  uint16_t displayChannels = anyListSelected ? selectedChannels : totalChannels;
+
+  char title[32];
+  snprintf(title, sizeof(title), "SCANLISTS %u | %u", validScanListCount, displayChannels);
+  RenderList(title, validScanListCount, scanListSelectedIndex, scanListScrollOffset, GetFilteredScanListText, true);
 }
 
 static void RenderParametersSelect() {
