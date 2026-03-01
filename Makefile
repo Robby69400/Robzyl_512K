@@ -15,7 +15,6 @@ ENABLE_UART                   := 1
 ENABLE_FMRADIO                := 1
 ENABLE_TX1750                 := 1
 # ---- CUSTOM MODS ----
-K5				                        := 1
 ENABLE_BIG_FREQ                         := 1
 ENABLE_SMALL_BOLD                       := 1
 ENABLE_TX_WHEN_AM                       := 0
@@ -235,9 +234,6 @@ CFLAGS += -Wextra
 CFLAGS += -DPRINTF_INCLUDE_CONFIG_H
 CFLAGS += -DAUTHOR_STRING=\"$(AUTHOR_STRING)\" -DVERSION_STRING=\"$(VERSION_STRING)\"
 
-ifeq ($(K5),1)
-CFLAGS += -DK5
-endif
 ifeq ($(ENABLE_SPECTRUM),1)
 CFLAGS += -DENABLE_SPECTRUM
 endif

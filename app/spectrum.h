@@ -19,9 +19,7 @@
 
 #include "../bitmaps.h"
 #include "../board.h"
-#ifdef K5
-  #include "../bsp/dp32g030/gpio.h"
-#endif
+#include "../bsp/dp32g030/gpio.h"
 #include "../driver/bk4819-regs.h"
 #include "../driver/bk4819.h"
 #include "../driver/gpio.h"
@@ -119,7 +117,7 @@ typedef enum StepsCount {
   STEPS_16,
 } StepsCount;
 
-typedef enum ScanStep : uint8_t {
+typedef enum ScanStep {
   S_STEP_0_01kHz,
   S_STEP_0_1kHz,
   S_STEP_0_5kHz,
@@ -153,16 +151,7 @@ typedef enum ScanList {
   S_SCAN_LIST_15,
   S_SCAN_LIST_ALL
 } ScanList;
-#ifdef ENABLE_FLASH_BAND
-typedef struct __attribute__((packed)) bandparameters { 
-    char BandName[12];        // 12 bytes
-    uint32_t Startfrequency;  // 4 bytes
-    uint32_t Stopfrequency;   // 4 bytes
-    uint8_t scanStep;         // 1 byte (Vérifiez si ScanStep est bien uint8_t)
-    uint8_t modulationType;   // 1 byte
-    uint8_t padding[10];      // 10 bytes pour atteindre un total de 32
-} bandparameters;
-#else
+
 typedef struct bandparameters { 
   char BandName[12];
   uint32_t Startfrequency; // Start frequency in MHz /100
@@ -170,13 +159,7 @@ typedef struct bandparameters {
   ScanStep scanStep;
   ModulationMode_t modulationType;
 } bandparameters;
-#endif
 
-#ifdef K5
-    #define MR_CHANNELS_LIST 15
-#endif
-
-#define MAX_BANDS 64
 typedef struct SpectrumSettings {
   uint32_t frequencyChangeStep;  
   StepsCount stepsCount;
@@ -189,8 +172,8 @@ typedef struct SpectrumSettings {
   int16_t dbMax;  
   ModulationMode_t modulationType;
   int scanList;
-  bool scanListEnabled[MR_CHANNELS_LIST];
-  bool bandEnabled[MAX_BANDS];
+  bool scanListEnabled[15];
+  bool bandEnabled[32];
 } SpectrumSettings;
 
 typedef struct KeyboardState{
@@ -212,12 +195,10 @@ typedef struct PeakInfo {
   uint32_t f;
   uint16_t i;
 } PeakInfo;
-#ifdef K1
-  void APP_RunSpectrum(void);
-#endif
-#ifdef K5
-  void APP_RunSpectrum(uint8_t Spectrum_state);        
-#endif
+
+void APP_RunSpectrum(uint8_t Spectrum_state);
+//void LookupChannelInfo();
+//void LookupChannelModulation();
 void ClearSettings(void);
 void LoadSettings(bool LNA);
 
