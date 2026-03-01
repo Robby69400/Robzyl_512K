@@ -27,7 +27,7 @@
 extern bool gBacklightAlwaysOn;  // из main.c
 
 // this is decremented once every 500ms
-uint16_t gBacklightCountdown = 0;  // ← uint16_t, не int16_t
+uint16_t gBacklightCountdown_500ms = 0;  // ← uint16_t, не int16_t
 bool backlightOn;
 
 void BACKLIGHT_InitHardware()
@@ -49,7 +49,7 @@ void BACKLIGHT_TurnOn(void)  // ← исправлена опечатка vvoid 
     backlightOn = true;
 
     if (gBacklightAlwaysOn) {
-        gBacklightCountdown = 0;
+        gBacklightCountdown_500ms = 0;
         BACKLIGHT_SetBrightness(gEeprom.BACKLIGHT_MAX);
         return;
     }
@@ -64,16 +64,16 @@ void BACKLIGHT_TurnOn(void)  // ← исправлена опечатка vvoid 
     switch (gEeprom.BACKLIGHT_TIME)
     {
         default:
-        case 1: gBacklightCountdown = 5;   break;
-        case 2: gBacklightCountdown = 10;  break;
-        case 3: gBacklightCountdown = 20;  break;
-        case 4: gBacklightCountdown = 60;  break;
-        case 5: gBacklightCountdown = 120; break;
-        case 6: gBacklightCountdown = 240; break;
-        case 7: gBacklightCountdown = 0;   break;
+        case 1: gBacklightCountdown_500ms = 5;   break;
+        case 2: gBacklightCountdown_500ms = 10;  break;
+        case 3: gBacklightCountdown_500ms = 20;  break;
+        case 4: gBacklightCountdown_500ms = 60;  break;
+        case 5: gBacklightCountdown_500ms = 120; break;
+        case 6: gBacklightCountdown_500ms = 240; break;
+        case 7: gBacklightCountdown_500ms = 0;   break;
     }
 
-    gBacklightCountdown *= 2;
+    gBacklightCountdown_500ms *= 2;
 }
 
 void BACKLIGHT_TurnOff(void)
@@ -93,7 +93,7 @@ void BACKLIGHT_TurnOff(void)
 #else
     BACKLIGHT_SetBrightness(gEeprom.BACKLIGHT_MIN);
 #endif
-    gBacklightCountdown = 0;
+    gBacklightCountdown_500ms = 0;
     backlightOn = false;
 }
 

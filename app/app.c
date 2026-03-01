@@ -789,11 +789,11 @@ void APP_TimeSlice500ms(void)
 		}
 
 
-if (gBacklightCountdown > 0 && !gBacklightAlwaysOn && 
+if (gBacklightCountdown_500ms > 0 && !gBacklightAlwaysOn && 
 		!gCssBackgroundScan &&
 		!(gScreenToDisplay == DISPLAY_MENU && (UI_MENU_GetCurrentMenuId() == MENU_ABR || UI_MENU_GetCurrentMenuId() == MENU_ABR_MAX)) 
 		) 
-	{	if (--gBacklightCountdown == 0)
+	{	if (--gBacklightCountdown_500ms == 0)
 				if (gEeprom.BACKLIGHT_TIME < (ARRAY_SIZE(gSubMenu_BACKLIGHT) - 1))
 					BACKLIGHT_TurnOff();
 	}

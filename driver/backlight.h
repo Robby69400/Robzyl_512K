@@ -23,7 +23,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-extern uint16_t gBacklightCountdown;
+extern uint16_t gBacklightCountdown_500ms;
 extern uint8_t gBacklightBrightness;
 
 #ifdef ENABLE_BLMIN_TMP_OFF

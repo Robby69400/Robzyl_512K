@@ -254,22 +254,22 @@ static void MAIN_Key_DIGITS(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
 					// Длинное 9 — toggle "подсветка всегда включена" (перенесено с 8)
 					gBacklightAlwaysOn = !gBacklightAlwaysOn;
 					if (gBacklightAlwaysOn) {
-						gBacklightCountdown = 0;
+						gBacklightCountdown_500ms = 0;
 						backlightOn = true;
 					} else {
 						backlightOn = true;
 						if (gEeprom.BACKLIGHT_TIME == 7) {
-							gBacklightCountdown = 0;
+							gBacklightCountdown_500ms = 0;
 						} else {
 							switch (gEeprom.BACKLIGHT_TIME)
 							{
-								case 1: gBacklightCountdown = 10; break;
-								case 2: gBacklightCountdown = 20; break;
-								case 3: gBacklightCountdown = 40; break;
-								case 4: gBacklightCountdown = 120; break;
-								case 5: gBacklightCountdown = 240; break;
-								case 6: gBacklightCountdown = 480; break;
-								default: gBacklightCountdown = 0; break;
+								case 1: gBacklightCountdown_500ms = 10; break;
+								case 2: gBacklightCountdown_500ms = 20; break;
+								case 3: gBacklightCountdown_500ms = 40; break;
+								case 4: gBacklightCountdown_500ms = 120; break;
+								case 5: gBacklightCountdown_500ms = 240; break;
+								case 6: gBacklightCountdown_500ms = 480; break;
+								default: gBacklightCountdown_500ms = 0; break;
 							}
 						}
 					}
