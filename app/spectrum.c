@@ -2652,8 +2652,8 @@ case KEY_SIDE1:
         }
         if (storedScanStepIndex != -1) {
             settings.scanStepIndex = storedScanStepIndex;
-            scanInfo.scanStep = settings.scanStepIndex;
             storedScanStepIndex = -1;
+            scanInfo.scanStep = settings.scanStepIndex;
         }
         SetState(SPECTRUM);
         WaitSpectrum = 0; //Prevent coming back to still directly
