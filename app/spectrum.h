@@ -202,7 +202,7 @@ void APP_RunSpectrum(uint8_t Spectrum_state);
 //void LookupChannelInfo();
 //void LookupChannelModulation();
 void ClearSettings(void);
-void LoadSettings(bool LNA);
+void LoadSettings(void);
 
 
 #endif 

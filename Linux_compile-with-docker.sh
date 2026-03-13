@@ -18,7 +18,7 @@ fi
 PL() {
     echo "PL compilation..."
     docker run --rm -v "${PWD}/compiled-firmware:/app/compiled-firmware" $IMAGE_NAME /bin/bash -c "cd /app && make -s \
-        ENABLE_FR_BAND=0 \
+        ENABLE_FULL_BAND=0 \
         ENABLE_PL_BAND=1 \
         TARGET=robzyl.pl \
         && cp robzyl.pl.packed* compiled-firmware/"
@@ -27,7 +27,7 @@ PL() {
 FR() {
     echo "FR compilation..."
     docker run --rm -v "${PWD}/compiled-firmware:/app/compiled-firmware" $IMAGE_NAME /bin/bash -c "cd /app && make -s \
-        ENABLE_FR_BAND=1 \
+        ENABLE_FULL_BAND=1 \
         ENABLE_PL_BAND=0 \
         TARGET=robzyl.fr \
         && cp robzyl.fr.packed* compiled-firmware/"

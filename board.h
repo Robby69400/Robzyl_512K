@@ -31,7 +31,7 @@ void     BOARD_ADC_GetBatteryInfo(uint16_t *pVoltage);
 void     BOARD_Init(void);
 void     BOARD_EEPROM_Init(void);
 void     BOARD_EEPROM_LoadCalibration(void);
-uint32_t BOARD_fetchChannelFrequency(uint16_t Channel);
+uint32_t FetchChannelFrequency(uint16_t Channel);
 void     BOARD_FactoryReset(int32_t gSubMenuSelection);
 
 void     BOARD_gMR_LoadChannels();

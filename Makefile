@@ -1,5 +1,5 @@
 AUTHOR_STRING := ""
-VERSION_STRING := V6.7b1
+VERSION_STRING := V6.8
 # compile options (see README.md for descriptions)
 # 0 = disable
 # 1 = enable
@@ -30,17 +30,7 @@ ENABLE_SPECTRUM                         := 1
 ENABLE_BYP_RAW_DEMODULATORS             := 0
 ENABLE_BLMIN_TMP_OFF                    := 0
 ENABLE_SCANNER							:= 1
-ENABLE_FR_BAND							:= 0
-ENABLE_BR_BAND							:= 0
-ENABLE_PL_BAND							:= 0
-ENABLE_RO_BAND							:= 0
-ENABLE_KO_BAND							:= 0
-ENABLE_CZ_BAND							:= 0
-ENABLE_TU_BAND							:= 0
-ENABLE_RU_BAND							:= 0
-ENABLE_IN_BAND							:= 0
-ENABLE_FI_BAND							:= 0
-ENABLE_SR_BAND							:= 0
+ENABLE_FULL_BAND						:= 1
 ENABLE_SCREENSHOT		  				:= 0
 ENABLE_SCANLIST_SHOW_DETAIL		   		:= 0
 ENABLE_EEPROM_512K				   		:= 0
@@ -315,43 +305,8 @@ endif
 ifeq ($(ENABLE_SCANNER),1)
 	CFLAGS  += -DENABLE_SCANNER
 endif
-ifeq ($(ENABLE_FR_BAND),1)
-	CFLAGS  += -DENABLE_FR_BAND
-endif
-ifeq ($(ENABLE_BR_BAND),1)
-	CFLAGS  += -DENABLE_BR_BAND
-endif
-ifeq ($(ENABLE_PL_BAND),1)
-	CFLAGS  += -DENABLE_PL_BAND
-endif
-ifeq ($(ENABLE_RO_BAND),1)
-	CFLAGS  += -DENABLE_RO_BAND
-endif
-ifeq ($(ENABLE_KO_BAND),1)
-	CFLAGS  += -DENABLE_KO_BAND
-endif
-ifeq ($(ENABLE_CZ_BAND),1)
-	CFLAGS  += -DENABLE_CZ_BAND
-endif
-
-ifeq ($(ENABLE_TU_BAND),1)
-	CFLAGS  += -DENABLE_TU_BAND
-endif
-
-ifeq ($(ENABLE_RU_BAND),1)
-	CFLAGS  += -DENABLE_RU_BAND
-endif
-
-ifeq ($(ENABLE_IN_BAND),1)
-	CFLAGS  += -DENABLE_IN_BAND
-endif
-
-ifeq ($(ENABLE_FI_BAND),1)
-	CFLAGS  += -DENABLE_FI_BAND
-endif
-
-ifeq ($(ENABLE_SR_BAND),1)
-	CFLAGS  += -DENABLE_SR_BAND
+ifeq ($(ENABLE_FULL_BAND),1)
+	CFLAGS  += -DENABLE_FULL_BAND
 endif
 
 ifeq ($(ENABLE_SCREENSHOT),1)

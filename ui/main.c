@@ -317,7 +317,7 @@ void UI_DisplayMain(void)
 
 						// Если имени нет — берём текущую частоту (как в VFO-режиме)
 						if (DisplayString[0] == 0) {
-							uint32_t freq = BOARD_fetchChannelFrequency(gEeprom.ScreenChannel);
+							uint32_t freq = FetchChannelFrequency(gEeprom.ScreenChannel);
 							sprintf(DisplayString, "%u.%05u", freq / 100000, freq % 100000);  // ← ПОЛНАЯ ЧАСТОТА С НУЛЯМИ
 						}
 
@@ -338,7 +338,7 @@ void UI_DisplayMain(void)
 				}
 				else {
 					if (gCurrentFunction == FUNCTION_TRANSMIT) frequency = gEeprom.VfoInfo.pTX->Frequency;
-					else if (gEeprom.ScreenChannel <= MR_CHANNEL_LAST) frequency = BOARD_fetchChannelFrequency(gEeprom.ScreenChannel);
+					else if (gEeprom.ScreenChannel <= MR_CHANNEL_LAST) frequency = FetchChannelFrequency(gEeprom.ScreenChannel);
 								
 				// МЕЛКИЕ НУЛИ ЧАСТОТЫ
 				sprintf(String, "%3u.%05u", frequency / 100000, frequency % 100000);

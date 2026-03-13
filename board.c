@@ -600,7 +600,7 @@ void BOARD_gMR_LoadChannels() {
 
 	for (i = MR_CHANNEL_FIRST; i <= MR_CHANNEL_LAST; i++)
 	{
-		freq_buf = BOARD_fetchChannelFrequency(i);
+		freq_buf = FetchChannelFrequency(i);
 
 		gMR_ChannelFrequencyAttributes[i].Frequency = RX_freq_check(freq_buf) == 0xFF ? 0 : freq_buf;
 	}
@@ -655,7 +655,7 @@ void BOARD_EEPROM_LoadCalibration(void)
 	}
 }
 
-uint32_t BOARD_fetchChannelFrequency(const uint16_t Channel)
+uint32_t FetchChannelFrequency(const uint16_t Channel)
 {
 	struct
 	{

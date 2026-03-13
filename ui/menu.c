@@ -460,7 +460,7 @@ void UI_DisplayMenu(void)
 				UI_PrintString(String, menu_item_x1, menu_item_x2, 2, 8);
 				if (!gAskForConfirmation)
 				{	// show the frequency so that the user knows the Channels frequency
-					const uint32_t frequency = BOARD_fetchChannelFrequency(gSubMenuSelection);
+					const uint32_t frequency = FetchChannelFrequency(gSubMenuSelection);
 					if (frequency == 0) {strcpy(String, "----");}
                     else sprintf(String, "%u.%05u", frequency / 100000, frequency % 100000);
 					UI_PrintString(String, menu_item_x1, menu_item_x2, 4, 8);
@@ -473,7 +473,7 @@ void UI_DisplayMenu(void)
 				UI_PrintString(String, menu_item_x1, menu_item_x2, 0, 8);
 
 
-				const uint32_t frequency = BOARD_fetchChannelFrequency(gSubMenuSelection);
+				const uint32_t frequency = FetchChannelFrequency(gSubMenuSelection);
 
 				if (!gIsInSubMenu || edit_index < 0)
 				{	// show the Channel name
