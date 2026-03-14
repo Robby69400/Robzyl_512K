@@ -1,4 +1,7 @@
 //K5 Spectrum
+// ============================================================
+// SECTION: Includes
+// ============================================================
 #include "app/spectrum.h"
 #include "scanner.h"
 #include "driver/backlight.h"
@@ -21,11 +24,17 @@
   #include "screenshot.h"
 #endif
 
+// ============================================================
+// SECTION: Compile-time configuration
+// ============================================================
 #define MAX_VISIBLE_LINES 6
 #define MR_CHANNELS_LIST 15
 #define NoisLvl 45
 #define NoiseHysteresis 15
 
+// ============================================================
+// SECTION: State variables
+// ============================================================
 static volatile bool gSpectrumChangeRequested = false;
 static volatile uint8_t gRequestedSpectrumState = 0;
 
@@ -74,7 +83,6 @@ static bool SettingsLoaded = false;
 uint8_t  gKeylockCountdown = 0;
 bool     gIsKeylocked = false;
 static uint16_t osdPopupTimer = 0;
-static uint16_t ScanIndex = 0;
 static uint32_t Fmax = 0;
 static uint32_t spectrumElapsedCount = 0;
 static uint32_t SpectrumPauseCount = 0;
@@ -159,6 +167,18 @@ static ScanInfo scanInfo;
 static char latestScanListName[12];
 static bool refreshScanListName = true;
 static bool IsBlacklisted(uint32_t f);
+
+/* ---- Unified list row descriptor ----
+ * Single-line mode: left = left-aligned text, right = right-aligned text.
+ * Two-line mode:    left = first display line,  right = second display line.
+ */
+typedef struct {
+    char left[17];   /* Left-aligned text (16 chars + null) */
+    char right[14];  /* Right-aligned / second line (13 chars + null) */
+} ListRow;
+
+typedef void (*GetListRowFn)(uint16_t index, ListRow *row);
+
 
 /***************************BIG RAM******************************************/
 
@@ -432,7 +452,9 @@ static void SetState(State state) {
   
 }
 
-// Radio functions
+// ============================================================
+// SECTION: Radio / hardware functions
+// ============================================================
 
 static void BackupRegisters() {
   R30 = BK4819_ReadRegister(BK4819_REG_30);
@@ -514,7 +536,7 @@ static uint16_t GetStepsCount()
 { 
   if (appMode==CHANNEL_MODE)
   {
-    return (scanChannelsCount > 0) ? (scanChannelsCount - 1) : 0;
+    return scanChannelsCount;
   }
   if(appMode==SCAN_RANGE_MODE) {
     return ((gScanRangeStop - gScanRangeStart) / GetScanStep()); //Robby69
@@ -862,6 +884,7 @@ static void ToggleRX(bool on) {
           }
     
     if (on) { 
+        Fmax = peak.f;
         SPI0_Init(64);
         BK4819_WriteRegister(BK4819_REG_37, 0x1D0F);
         SYSTEM_DelayMs(20);
@@ -891,8 +914,7 @@ static void ResetScanStats() {
 
 static bool InitScan() {
     ResetScanStats();
-    scanInfo.i = 0; //0 to MR_CHANNEL_LAST
-    ScanIndex = 0;  //0 to scanChannelsCount
+    scanInfo.i = 0;
     peak.i = 0; // To check
     peak.f = 0; // To check
     
@@ -976,7 +998,6 @@ static void UpdateGlitch() {
 }
 
 static void Measure() {
-    uint16_t j;    
     static int16_t previousRssi = 0;
     static bool isFirst = true;
     uint16_t rssi = scanInfo.rssi = GetRssi();
@@ -996,10 +1017,11 @@ static void Measure() {
 
     if (!gIsPeak && rssi > previousRssi + settings.rssiTriggerLevelUp) {
         SYSTEM_DelayMs(10);
-        uint16_t rssi2 = GetRssi();
-        if (rssi2 > rssi + 10) {
+        
+        uint16_t rssi2 = scanInfo.rssi = GetRssi();
+        if (rssi2 > rssi+10) {
           peak.f = scanInfo.f;
-          peak.i = scanInfo.i;
+            peak.i = scanInfo.i-1;
         }
         if (settings.rssiTriggerLevelUp < 50) {
             gIsPeak = true;
@@ -1007,38 +1029,31 @@ static void Measure() {
             UpdateGlitch();
         } 
     } 
-
     if (!gIsPeak || !isListening) previousRssi = rssi;
     else if (rssi < previousRssi) previousRssi = rssi;
-    uint16_t count = GetStepsCount() + 1;
-    if (count == 0) return;
-    uint16_t i = scanInfo.i;
-    if (i >= MR_CHANNEL_LAST) i = MR_CHANNEL_LAST - 1;
+
+    uint16_t count = GetStepsCount();
+    uint16_t i = scanInfo.i-1;
+
     if (count > 128) {
-        uint16_t pixel = (uint32_t)ScanIndex * 128 / count;
-        if (pixel >= 128) pixel = 127;
-        rssiHistory[pixel] = rssi;
-        if(++pixel < 128) rssiHistory[pixel] = 0; //2 blank pixels
-        if(++pixel < 128) rssiHistory[pixel] = 0;
+        uint16_t pixel = (uint32_t)i * 128 / count;
+        if (pixel < 128) { rssiHistory[pixel] = rssi;}
     } else {
+        uint16_t j;
           uint16_t base = 128 / count;
           uint16_t rem  = 128 % count;
-          uint16_t startIndex = ScanIndex * base + (ScanIndex < rem ? ScanIndex : rem);
-          uint16_t width      = base + (ScanIndex < rem ? 1 : 0);
-          uint16_t endIndex   = startIndex + width;
-
-          uint16_t maxEnd = endIndex;
-          if (maxEnd > 128) maxEnd = 128;
-          for (j = startIndex; j < maxEnd; ++j) { rssiHistory[j] = rssi; }
-
-          uint16_t zeroEnd = endIndex + width;
-          if (zeroEnd > 128) zeroEnd = 128;
-          for (j = endIndex; j < zeroEnd; ++j) { rssiHistory[j] = 0; }
-   }
+        uint16_t start = i * base + (i < rem ? i : rem);
+        uint16_t end   = (i + 1) * base + ((i + 1) < rem ? (i + 1) : rem);
+        if (end > 128) end = 128;
+        for (j = start; j < end; ++j) {
+            rssiHistory[j] = rssi;
+            //char str[64] = "";sprintf(str, "M %d %d %d\r\n", scanInfo.i,j, scanInfo.f);LogUart(str);
+        }
+    }
 }
 
 static void UpdateDBMaxAuto() { //Zoom
-  static uint8_t z = 10;
+  static uint8_t z = 5;
   int newDbMax;
     if (scanInfo.rssiMax > 0) {
         newDbMax = clamp(Rssi2DBm(scanInfo.rssiMax), -80, 0);
@@ -1219,8 +1234,9 @@ static void Blacklist() {
 }
 
 
-// Draw things
-
+// ============================================================
+// SECTION: Display / rendering helpers
+// ============================================================
 // applied x2 to prevent initial rounding
 static uint16_t Rssi2PX(uint16_t rssi, uint16_t pxMin, uint16_t pxMax) {
   const int16_t DB_MIN = settings.dbMin << 1;
@@ -1238,7 +1254,7 @@ static int16_t Rssi2Y(uint16_t rssi) {
 
 static void DrawSpectrum(void) {
     int16_t y_baseline = Rssi2Y(0); 
-    for (uint8_t i = 0; i < 127; i++) {
+    for (uint8_t i = 0; i < 128; i++) {
         int16_t y_curr = Rssi2Y(rssiHistory[i]);
         for (int16_t y = y_curr; y <= y_baseline; y++) {
                 gFrameBuffer[y >> 3][i] |= (1 << (y & 7));
@@ -1534,26 +1550,22 @@ uint32_t f_linear;
 
 static void NextScanStep() {
     spectrumElapsedCount = 0;
-
+    uint16_t count = GetStepsCount();
+    if (scanInfo.i >= count) {scanInfo.i = 0;}
     if (appMode == CHANNEL_MODE) { 
-        if (scanChannelsCount == 0) return;
-        while (1) {
-            if (++scanInfo.i > MR_CHANNEL_LAST) return;
+        if (scanChannelsCount == 0) {return;}
             scanInfo.f = ScanFrequencies[scanInfo.i];
-            if (scanInfo.f ) break;
-        }
         f_linear = scanInfo.f;
-    } 
-    else {
+        //char str[64] = "";sprintf(str, "%d %d \r\n", scanInfo.i, scanInfo.f);LogUart(str);
+    } else {
         if (scanInfo.scanStep < 2500 || scanInfo.scanStep == 1000) {
             nextFrequencyinterlaced();
         } else {
             scanInfo.f = gScanRangeStart + (scanInfo.i * scanInfo.scanStep);
         }
         f_linear = gScanRangeStart + (scanInfo.i * scanInfo.scanStep);
-        scanInfo.i++;
     }
-ScanIndex++;
+        scanInfo.i++;
 }
 
 static void CompactHistory(void) {
@@ -1616,595 +1628,10 @@ static void Skip() {
   }
 }
 
-static void SetTrigger50(){
-  char triggerText[32];
-  if (settings.rssiTriggerLevelUp == 50) {
-      sprintf(triggerText, "DYN SQUELCH: OFF");
-  }
-  else {
-      sprintf(triggerText, "DYN SQUELCH: %d", settings.rssiTriggerLevelUp);
-  }
-  ShowOSDPopup(triggerText);
-}
-static const uint8_t durations[] = {0, 20, 40, 60};
-
-static void OnKeyDown(uint8_t key) {
-
-    if (!gBacklightCountdown) {BACKLIGHT_TurnOn(); return;}
-    BACKLIGHT_TurnOn();
-    if (gIsKeylocked) {
-        // Seule la touche F (Function) permet de déverrouiller
-        if (key == KEY_F) { 
-            gIsKeylocked = false;
-            ShowOSDPopup("Unlocked");
-            gKeylockCountdown = durations[AUTO_KEYLOCK];
-            
-        }
-        else ShowOSDPopup("Unlock:F");
-        return;
-    } 
-    gKeylockCountdown = durations[AUTO_KEYLOCK];
-    // NEW HANDLING: press of '4' key in SCAN_BAND_MODE
-    if (appMode == SCAN_BAND_MODE && key == KEY_4 && currentState == SPECTRUM) {
-        SetState(BAND_LIST_SELECT);
-        bandListSelectedIndex = 0; // Start from the first band
-        bandListScrollOffset = 0;  // Reset scrolling
-        
-        return; // Key handled
-    }
-
-    // NEW HANDLING: press of '4' key in CHANNEL_MODE
-    if (appMode == CHANNEL_MODE && key == KEY_4 && currentState == SPECTRUM) {
-        SetState(SCANLIST_SELECT);
-        scanListSelectedIndex = 0;
-        scanListScrollOffset = 0;
-        
-        return; // Key handled
-    }
-    
-	if (key == KEY_5 && currentState == SPECTRUM) {
-     
-    if (historyListActive) {
-          gHistoryScan = !gHistoryScan;
-          if (gHistoryScan) {
-              ShowOSDPopup("SCAN HISTORY ON");
-              gIsPeak = false; // Force le redémarrage si on était bloqué
-              SpectrumMonitor = 0;
-          } else {
-              ShowOSDPopup("SCAN HISTORY OFF");
-          }
-          return;     
-    }
-    SetState(PARAMETERS_SELECT);
-
-    if (!parametersStateInitialized) {
-        parametersSelectedIndex = 0;
-        parametersScrollOffset = 0;
-        parametersStateInitialized = true;
-    }
-    return;
-    }
-    
-    // If we're in band selection mode, use dedicated key logic
-    if (currentState == BAND_LIST_SELECT) {
-        switch (key) {
-            case KEY_UP: //Band
-                if (bandListSelectedIndex > 0) {
-                    bandListSelectedIndex--;
-                    if (bandListSelectedIndex < bandListScrollOffset) {
-                        bandListScrollOffset = bandListSelectedIndex;
-                    }
-                }
-                else bandListSelectedIndex =  ARRAY_SIZE(BParams) - 1;
-                
-                break;
-            case KEY_DOWN:
-                // ARRAY_SIZE(BParams) gives the number of defined bands
-                if (bandListSelectedIndex < ARRAY_SIZE(BParams) - 1) {
-                    bandListSelectedIndex++;
-                    if (bandListSelectedIndex >= bandListScrollOffset + MAX_VISIBLE_LINES) {
-                        bandListScrollOffset = bandListSelectedIndex - MAX_VISIBLE_LINES + 1;
-                    }
-              }
-                else bandListSelectedIndex = 0;
-                
-                break;
-            case KEY_4: // Band selection
-                if (bandListSelectedIndex < ARRAY_SIZE(BParams)) {
-                    // Set the selected band as the only active one for scanning
-                    settings.bandEnabled[bandListSelectedIndex] = !settings.bandEnabled[bandListSelectedIndex]; 
-                    // Reset nextBandToScanIndex so InitScan starts from the selected one
-                    nextBandToScanIndex = bandListSelectedIndex; 
-                    bandListSelectedIndex++;
-                }
-                break;
-            case KEY_5: // Band selection
-                if (bandListSelectedIndex < ARRAY_SIZE(BParams)) {
-                    // Set the selected band as the only active one for scanning
-                    memset(settings.bandEnabled, 0, sizeof(settings.bandEnabled)); // Clear all flags
-                    settings.bandEnabled[bandListSelectedIndex] = true; // Enable selected band
-                    
-                    // Reset nextBandToScanIndex so InitScan starts from the selected one
-                    nextBandToScanIndex = bandListSelectedIndex; 
-                }
-                break;
-				
-				        // NOWA FUNKCJA: Przejście do wybranego zakresu po wciśnięciu MENU
-            case KEY_MENU:
-            if (bandListSelectedIndex < ARRAY_SIZE(BParams)) {
-                memset(settings.bandEnabled, 0, sizeof(settings.bandEnabled));
-                settings.bandEnabled[bandListSelectedIndex] = true;
-                nextBandToScanIndex = bandListSelectedIndex;
-                SetState(SPECTRUM);
-                RelaunchScan();
-            }
-            break;
-				
-            case KEY_EXIT: // Exit band list
-                SpectrumMonitor = 0;
-                SetState(SPECTRUM); // Return to band scanning mode
-                RelaunchScan(); 
-                break;
-            default:
-                break;
-        }
-        return; // Finish handling if we were in BAND_LIST_SELECT
-    }
-// If we're in scanlist selection mode, use dedicated key logic
-    if (currentState == SCANLIST_SELECT) {
-        switch (key) {
-
-            case KEY_UP://SCANLIST
-                if (scanListSelectedIndex > 0) {
-                    scanListSelectedIndex--;
-                    if (scanListSelectedIndex < scanListScrollOffset) {
-                        scanListScrollOffset = scanListSelectedIndex;
-                    }
-                }
-                else scanListSelectedIndex = validScanListCount-1;
-                
-                break;
-            case KEY_DOWN:
-                // ARRAY_SIZE(BParams) gives the number of defined bands
-                if (scanListSelectedIndex < validScanListCount-1) { 
-                    scanListSelectedIndex++;
-                    if (scanListSelectedIndex >= scanListScrollOffset + MAX_VISIBLE_LINES) {
-                        scanListScrollOffset = scanListSelectedIndex - MAX_VISIBLE_LINES + 1;
-                    }    
-                }
-                else scanListSelectedIndex = 0;
-                
-                break;
-#ifdef ENABLE_SCANLIST_SHOW_DETAIL
-            case KEY_STAR: // NOWA OBSŁUGA - Show channels in selected scanlist
-                selectedScanListIndex = scanListSelectedIndex;
-                BuildScanListChannels(validScanListIndices[selectedScanListIndex]);
-                scanListChannelsSelectedIndex = 0;
-                scanListChannelsScrollOffset = 0;
-                SetState(SCANLIST_CHANNELS);
-                break;	
-#endif
-            case KEY_4: // Scan list selection
-                ToggleScanList(validScanListIndices[scanListSelectedIndex], 0);
-                if (scanListSelectedIndex < validScanListCount - 1) {
-                      scanListSelectedIndex++;
-                   }
-                break;
-
-            case KEY_5: // Scan list selection
-                ToggleScanList(validScanListIndices[scanListSelectedIndex], 1);
-                break;
-				        
-            case KEY_MENU:
-                if (scanListSelectedIndex < MR_CHANNELS_LIST) {
-                    ToggleScanList(validScanListIndices[scanListSelectedIndex], 1);
-                    SetState(SPECTRUM);
-                    ResetModifiers();
-                    gForceModulation = 0; //Kolyan request release modulation
-                }
-                break;
-				
-        case KEY_EXIT: // Exit scan list selection
-                SpectrumMonitor = 0;
-                SetState(SPECTRUM); // Return to scanning mode
-                ResetModifiers();
-                gForceModulation = 0; //Kolyan request release modulation
-                break;
-
-        default:
-                break;
-        }
-        return; // Finish handling if we were in SCAN_LIST_SELECT
-      }
-      	  
-	// If we're in scanlist channels mode, use dedicated key logic
-#ifdef ENABLE_SCANLIST_SHOW_DETAIL
-  if (currentState == SCANLIST_CHANNELS) {
-    switch (key) {
-    case KEY_UP: //SCANLIST DETAILS
-        if (scanListChannelsSelectedIndex > 0) {
-            scanListChannelsSelectedIndex--;
-            if (scanListChannelsSelectedIndex < scanListChannelsScrollOffset) {
-                scanListChannelsScrollOffset = scanListChannelsSelectedIndex;
-            }
-            
-        }
-        break;
-    case KEY_DOWN:
-        if (scanListChannelsSelectedIndex < scanListChannelsCount - 1) {
-            scanListChannelsSelectedIndex++;
-            if (scanListChannelsSelectedIndex >= scanListChannelsScrollOffset + 3) { //MAX_VISIBLE_LINES=3
-                scanListChannelsScrollOffset = scanListChannelsSelectedIndex - 3 + 1;
-            }
-            
-        }
-        break;
-    case KEY_EXIT: // Exit scanlist channels back to scanlist selection
-        SetState(SCANLIST_SELECT);
-        
-        break;
-    default:
-        break;
-    }
-    return; // Finish handling if we were in SCANLIST_CHANNELS
-}
-#endif
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-      // If we're in PARAMETERS_SELECT selection mode, use dedicated key logic
-    if (currentState == PARAMETERS_SELECT) {
-    
-      switch (key) {
-          case KEY_UP://PARAMETERS
-                if (parametersSelectedIndex > 0) {
-                    parametersSelectedIndex--;
-                    if (parametersSelectedIndex < parametersScrollOffset) {
-                        parametersScrollOffset = parametersSelectedIndex;
-                    }
-                }
-                else parametersSelectedIndex = PARAMETER_COUNT-1;
-                break;
-          case KEY_DOWN:
-                if (parametersSelectedIndex < PARAMETER_COUNT-1) { 
-                    parametersSelectedIndex++;
-                    if (parametersSelectedIndex >= parametersScrollOffset + MAX_VISIBLE_LINES) {
-                        parametersScrollOffset = parametersSelectedIndex - MAX_VISIBLE_LINES + 1;
-                    }
-                }
-                else parametersSelectedIndex = 0;
-                break;
-          case KEY_3:
-          case KEY_1:
-              bool isKey3 = (key == KEY_3);
-              switch(parametersSelectedIndex) {//SEE HERE parametersSelectedIndex
-                  case 0: // DelayRssi
-                      DelayRssi = isKey3 ? 
-                                 (DelayRssi >= 12 ? 1 : DelayRssi + 1) :
-                                 (DelayRssi <= 1 ? 12 : DelayRssi - 1);
-                      const int rssiMap[] = {1, 5, 10, 15, 20};
-                      if (DelayRssi >= 1 && DelayRssi <= 5) {
-                          settings.rssiTriggerLevelUp = rssiMap[DelayRssi - 1];
-                          } else {settings.rssiTriggerLevelUp = 20;}
-                      break;
-              
-                  case 1: // SpectrumDelay
-                      if (isKey3) {
-                          if (SpectrumDelay < 61000) {
-                              SpectrumDelay += (SpectrumDelay < 10000) ? 1000 : 5000;
-                          }
-                      } else if (SpectrumDelay >= 1000) {
-                          SpectrumDelay -= (SpectrumDelay < 10000) ? 1000 : 5000;
-                      }
-                      break;
-                  
-                  case 2: 
-                      if (isKey3) {
-                          IndexMaxLT++;
-                          if (IndexMaxLT > LISTEN_STEP_COUNT) IndexMaxLT = 0;
-                      } else {
-                          if (IndexMaxLT == 0) IndexMaxLT = LISTEN_STEP_COUNT;
-                          else IndexMaxLT--;
-                      }
-                      MaxListenTime = listenSteps[IndexMaxLT];
-                      break;
-                  
-                  case 3: // gScanRange
-                  case 4:
-                          appMode = SCAN_RANGE_MODE;
-                          FreqInput();
-                      break;
-
-                  case 5: // UpdateScanStep
-                      UpdateScanStep(isKey3);
-                      break;
-                    
-                  case 6: // ToggleListeningBW
-                  case 7: // ToggleModulation
-                      if (isKey3 || key == KEY_1) {
-                          if (parametersSelectedIndex == 6) {
-                              ToggleListeningBW(isKey3 ? 0 : 1);
-                          } else {
-                              ToggleModulation();
-                          }
-                      }
-                      break;
-
-                  case 8: 
-                        Backlight_On_Rx=!Backlight_On_Rx;
-                      break;
-
-                  case 9: // SpectrumSleepMs
-                        if (isKey3) {
-                          IndexPS++;
-                          if (IndexPS > PS_STEP_COUNT) IndexPS = 0;
-                        } else {
-                          if (IndexPS == 0) IndexPS = PS_STEP_COUNT;
-                          else IndexPS--;
-                        }
-                        SpectrumSleepMs = PS_Steps[IndexPS];
-                      break;
-                  case 10: // Noislvl_OFF
-                      Noislvl_OFF = isKey3 ? 
-                                 (Noislvl_OFF >= 100 ? 30 : Noislvl_OFF + 1) :
-                                 (Noislvl_OFF <= 30 ? 100 : Noislvl_OFF - 1);
-                      Noislvl_ON = NoisLvl - NoiseHysteresis;                      
-                      break;
-                  case 11: //osdPopupSetting
-                      osdPopupSetting = isKey3 ? 
-                                 (osdPopupSetting >= 5000 ? 0 : osdPopupSetting + 500) :
-                                 (osdPopupSetting <= 0 ? 5000 : osdPopupSetting - 500);
-                      break;
-                  case 12: // UOO_trigger
-                      UOO_trigger = isKey3 ? 
-                                 (UOO_trigger >= 50 ? 0 : UOO_trigger + 1) :
-                                 (UOO_trigger <= 0 ? 50 : UOO_trigger - 1);
-                      break;
-                  case 13: // AUTO_KEYLOCK
-                      AUTO_KEYLOCK = isKey3 ? 
-                                 (AUTO_KEYLOCK > 2 ? 0 : AUTO_KEYLOCK + 1) :
-                                 (AUTO_KEYLOCK <= 0 ? 3 : AUTO_KEYLOCK - 1);
-                      gKeylockCountdown = durations[AUTO_KEYLOCK];
-                      break;
-                  case 14:
-                      if (isKey3) {
-                          if (GlitchMax < 75) GlitchMax+=5;
-                      } else {
-                          if (GlitchMax > 10) GlitchMax-=5;
-                      }
-                      break;
-                  case 15: // AF 300 SoundBoost
-                      SoundBoost = !SoundBoost;
-                      break;
-                  case 16: // PttEmission
-                      PttEmission = isKey3 ?
-                                (PttEmission >= 2 ? 0 : PttEmission + 1) :
-                                (PttEmission <= 0 ? 2 : PttEmission - 1);
-                      break;
-                  case 17: // ClearHistory
-                        if (isKey3) ClearHistory();
-                      break;
-                  case 18: 
-                        if (isKey3) ClearSettings();
-                      break;
-              }
-        break;
-
-        case KEY_7:
-          SaveSettings(); 
-        break;
-
-        case KEY_EXIT: // Exit parameters menu to previous menu/state
-          //SaveSettings();
-          SetState(SPECTRUM);
-          RelaunchScan();
-          ResetModifiers();
-          if(Key_1_pressed) {
-            APP_RunSpectrum(3);
-          }
-          break;
-
-        default:
-          break;
-      }
-            
-      return; // Finish handling if we were in PARAMETERS_SELECT
-    }
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    
-  
-
-  switch (key) {
-          
-      case KEY_STAR: {
-          int step = (settings.rssiTriggerLevelUp >= 20) ? 5 : 1;
-          settings.rssiTriggerLevelUp = (settings.rssiTriggerLevelUp >= 50? 0 : settings.rssiTriggerLevelUp + step);
-          SPECTRUM_PAUSED = true;
-          Skip();
-          SetTrigger50();
-          break;
-      }
-
-      case KEY_F: {
-          int step = (settings.rssiTriggerLevelUp <= 20) ? 1 : 5;
-          settings.rssiTriggerLevelUp = (settings.rssiTriggerLevelUp <= 0? 50 : settings.rssiTriggerLevelUp - step);
-          SPECTRUM_PAUSED = true;
-          Skip();
-          SetTrigger50();
-          break;
-      }
-
-
-      case KEY_3:
-        if (historyListActive) { DeleteHistoryItem();}
-        else {
-          ToggleListeningBW(1);
-          char bwText[32];
-          sprintf(bwText, "BW: %s", bwNames[settings.listenBw]);
-          ShowOSDPopup(bwText);
-        }
-        break;
-     
-      case KEY_9:
-        ToggleModulation();
-		    char modText[32];
-        sprintf(modText, "MOD: %s", gModulationStr[settings.modulationType]);
-        ShowOSDPopup(modText);
-        break;
-
-      case KEY_1: //SKIP OR SAVE
-        Skip();
-        ShowOSDPopup("SKIPPED");
-        break;
-     
-     case KEY_7:
-
-        if (historyListActive) {
-        #ifdef ENABLE_EEPROM_512K
-          WriteHistory();
-        #endif
-        }
-        else {
-          SaveSettings(); 
-        }
-        break;
-     
-     case KEY_2:
-        if (historyListActive) {
-            SaveHistoryToFreeChannel();
-        } else {
-            classic=!classic;
-        }
-      break;
-
-    case KEY_8:
-      if (historyListActive) {
-          memset(HFreqs,0,sizeof(HFreqs));
-          memset(HCount,0,sizeof(HCount));
-          memset(HBlacklisted,0,sizeof(HBlacklisted));
-          historyListIndex = 0;
-          historyScrollOffset = 0;
-          indexFs = 0;
-          SpectrumMonitor = 0;
-      } else {
-            if (classic){
-			    ShowLines++;
-                if (ShowLines > 2 || ShowLines < 1) ShowLines = 1;
-                char viewText[15];
-			    const char *viewName = "CLASSIC";
-				if (ShowLines == 2) viewName = "BIG";
-                sprintf(viewText, "VIEW: %s", viewName);
-                ShowOSDPopup(viewText);
-            }
-      }
-    break;
-
-      
-    case KEY_UP: //History
-      if (historyListActive) {
-        uint16_t count = CountValidHistoryItems();
-        SpectrumMonitor = 1; //Auto FL when moving in history
-        if (!count) return;
-        if (historyListIndex == 0) {
-            historyListIndex = count - 1;
-            if (count > MAX_VISIBLE_LINES)
-                historyScrollOffset = count - MAX_VISIBLE_LINES;
-            else
-                historyScrollOffset = 0;
-        } else {
-            historyListIndex--;
-        }
-
-        if (historyListIndex < historyScrollOffset) {
-            historyScrollOffset = historyListIndex;
-        }
-        lastReceivingFreq = HFreqs[historyListIndex];
-        SetF(lastReceivingFreq);
-      } else {
-        if (appMode==SCAN_BAND_MODE) {
-            ToggleScanList(bl, 1);
-            settings.bandEnabled[bl+1]= true;
-            RelaunchScan(); 
-            break;
-        }
-        else if(appMode==FREQUENCY_MODE) {UpdateCurrentFreq(true);}
-        else if(appMode==CHANNEL_MODE){
-              BuildValidScanListIndices();
-              scanListSelectedIndex = (scanListSelectedIndex < validScanListCount ? scanListSelectedIndex+1 : 0);
-              ToggleScanList(validScanListIndices[scanListSelectedIndex], 1);
-              SetState(SPECTRUM);
-              ResetModifiers();
-              break;
-        }
-        else if(appMode==SCAN_RANGE_MODE){
-              uint32_t RangeStep = gScanRangeStop - gScanRangeStart;
-              gScanRangeStop  += RangeStep;
-              gScanRangeStart += RangeStep;
-              RelaunchScan();
-              break;
-        }
-        Skip();
-    }
-    break;
-  case KEY_DOWN: //History
-      if (historyListActive) {
-        uint16_t count = CountValidHistoryItems();
-        SpectrumMonitor = 1; //Auto FL when moving in history
-        if (!count) return;
-        historyListIndex++;
-        if (historyListIndex >= count) {
-            historyListIndex = 0;
-            historyScrollOffset = 0;
-        }
-        if (historyListIndex >= historyScrollOffset + MAX_VISIBLE_LINES) {
-            historyScrollOffset = historyListIndex - MAX_VISIBLE_LINES + 1;
-        }
-        lastReceivingFreq = HFreqs[historyListIndex];
-        SetF(lastReceivingFreq);
-    } else {
-        if (appMode==SCAN_BAND_MODE) {
-            ToggleScanList(bl, 1);
-            settings.bandEnabled[bl-1]= true;
-            RelaunchScan(); 
-            break;
-        }
-        else if(appMode==FREQUENCY_MODE){UpdateCurrentFreq(false);}
-        //else if (ShowLines > 4) {if (historyListIndex < HISTORY_SIZE) historyListIndex++;}
-        else if(appMode==CHANNEL_MODE){
-            BuildValidScanListIndices();
-            scanListSelectedIndex = (scanListSelectedIndex < 1 ? validScanListCount-1:scanListSelectedIndex-1);
-            ToggleScanList(validScanListIndices[scanListSelectedIndex], 1);
-            SetState(SPECTRUM);
-            ResetModifiers();
-            break;
-        }
-        else if(appMode==SCAN_RANGE_MODE){
-            uint32_t RangeStep = gScanRangeStop - gScanRangeStart;
-            gScanRangeStop  -= RangeStep;
-            gScanRangeStart -= RangeStep;
-            RelaunchScan();
-            break;
-        }
-        Skip();
-    }
-  break;
-  
-  case KEY_4:
-    if (appMode!=SCAN_RANGE_MODE){ToggleStepsCount();}
-    break;
-
-  case KEY_0:
-    if (!historyListActive) {
-        CompactHistory();
-        historyListActive = true;
-        historyListIndex = 0;
-        historyScrollOffset = 0;
-        prevSpectrumMonitor = SpectrumMonitor;
-        }
-    break;
-  
-     case KEY_6: // next mode
+void NextAppMode(void) {
         // 0 = FR, 1 = SL, 2 = BD, 3 = RG
         if (++Spectrum_state > 3) {Spectrum_state = 0;}
+        if (!scanChannelsCount && Spectrum_state ==1) Spectrum_state++; //No SL skip SL mode
         char sText[32];
         const char* s[] = {"FREQ", "S LIST", "BAND", "RANGE"};
         sprintf(sText, "MODE: %s", s[Spectrum_state]);
@@ -2218,90 +1645,588 @@ static void OnKeyDown(uint8_t key) {
         SPECTRUM_PAUSED = false;
         SpectrumPauseCount = 0;
         newScanStart = true;
-        ToggleRX(false);  
-        break;
-  
-case KEY_SIDE1:
-    if (SPECTRUM_PAUSED) return;
-    SpectrumMonitor++;
-    if (SpectrumMonitor > 2) SpectrumMonitor = 0; // 0 normal, 1 Freq lock, 2 Monitor
-
-    if (SpectrumMonitor == 1) {
-        if (lastReceivingFreq < 1400000 || lastReceivingFreq > 130000000) {
-            lastReceivingFreq = (scanInfo.f >= 1400000) ? scanInfo.f : gScanRangeStart;
-        }
-        peak.f = lastReceivingFreq;
-        scanInfo.f = lastReceivingFreq;
-        SetF(lastReceivingFreq);
-    }
-
-    if (SpectrumMonitor == 2) ToggleRX(1);
-
-    char monitorText[32];
-    const char* modes[] = {"NORMAL", "FREQ LOCK", "MONITOR"};
-    sprintf(monitorText, "MODE: %s", modes[SpectrumMonitor]);
-    ShowOSDPopup(monitorText);
-    break;
-
-    case KEY_SIDE2:
-    if (historyListActive) {
-        HBlacklisted[historyListIndex] = !HBlacklisted[historyListIndex];
-        if (HBlacklisted[historyListIndex]) {
-            ShowOSDPopup("BL ADDED");
-        } else {
-            ShowOSDPopup("BL REMOVED");
-        }
-        RenderHistoryList();
-        gIsPeak = 0;
         ToggleRX(false);
-        isBlacklistApplied = true;
-        ResetScanStats();
-        NextScanStep();
-        break;
-    }
-    else Blacklist();
-    WaitSpectrum = 0;
-    ShowOSDPopup("BL ADD");
-    break;
+}
 
-  case KEY_PTT:
-      ExitAndCopyToVfo();
-      break;
-  
-case KEY_MENU: //History
-      uint16_t validCount = 0;
-      for (uint16_t k = 1; k < HISTORY_SIZE; k++) {
-          if (HFreqs[k]) {validCount++;}
-      }
-      if (historyListActive == true) {scanInfo.f = HFreqs[historyListIndex];}
-      SetState(STILL);
 
-      stillFreq = GetInitialStillFreq();
-      if (stillFreq >= 1400000 && stillFreq <= 130000000) {
-          scanInfo.f = stillFreq;
-          peak.f = stillFreq;
-          SetF(stillFreq);
-      }
-  break;
-
-  case KEY_EXIT: //exit from history or spectrum
-  
-    if (historyListActive == true) {
-      gHistoryScan = false;
-      SetState(SPECTRUM);
-      historyListActive = false;
-      SpectrumMonitor = prevSpectrumMonitor;
-      SetF(scanInfo.f);
-      break;
-    }
-
-    if (WaitSpectrum) {WaitSpectrum = 0;} //STOP wait
-    DeInitSpectrum(0);
-    break;
-   
-   default:
-      break;
+static void SetTrigger50(){
+  char triggerText[32];
+  if (settings.rssiTriggerLevelUp == 50) {
+      sprintf(triggerText, "DYN SQUELCH: OFF");
   }
+  else {
+      sprintf(triggerText, "DYN SQUELCH: %d", settings.rssiTriggerLevelUp);
+  }
+  ShowOSDPopup(triggerText);
+}
+static const uint8_t durations[] = {0, 20, 40, 60};
+
+// ============================================================
+// SECTION: Per-state keyboard handlers
+// ============================================================
+
+/* --- BAND_LIST_SELECT: navigate and toggle band enable flags --- */
+static void HandleKeyBandList(uint8_t key) {
+    switch (key) {
+        case KEY_UP:
+            if (bandListSelectedIndex > 0) {
+                bandListSelectedIndex--;
+                if (bandListSelectedIndex < bandListScrollOffset)
+                    bandListScrollOffset = bandListSelectedIndex;
+            } else {
+                bandListSelectedIndex = ARRAY_SIZE(BParams) - 1;
+            }
+            break;
+        case KEY_DOWN:
+            if (bandListSelectedIndex < ARRAY_SIZE(BParams) - 1) {
+                bandListSelectedIndex++;
+                if (bandListSelectedIndex >= bandListScrollOffset + MAX_VISIBLE_LINES)
+                    bandListScrollOffset = bandListSelectedIndex - MAX_VISIBLE_LINES + 1;
+            } else {
+                bandListSelectedIndex = 0;
+            }
+            break;
+        case KEY_4: /* toggle selected band */
+            if (bandListSelectedIndex < ARRAY_SIZE(BParams)) {
+                settings.bandEnabled[bandListSelectedIndex] = !settings.bandEnabled[bandListSelectedIndex];
+                nextBandToScanIndex = bandListSelectedIndex;
+                bandListSelectedIndex++;
+            }
+            break;
+        case KEY_5: /* select only this band */
+            if (bandListSelectedIndex < ARRAY_SIZE(BParams)) {
+                memset(settings.bandEnabled, 0, sizeof(settings.bandEnabled));
+                settings.bandEnabled[bandListSelectedIndex] = true;
+                nextBandToScanIndex = bandListSelectedIndex;
+            }
+            break;
+        case KEY_MENU: /* select only this band and start scanning */
+            if (bandListSelectedIndex < ARRAY_SIZE(BParams)) {
+                memset(settings.bandEnabled, 0, sizeof(settings.bandEnabled));
+                settings.bandEnabled[bandListSelectedIndex] = true;
+                nextBandToScanIndex = bandListSelectedIndex;
+                SetState(SPECTRUM);
+                RelaunchScan();
+            }
+            break;
+        case KEY_EXIT:
+            SpectrumMonitor = 0;
+            SetState(SPECTRUM);
+            RelaunchScan();
+            break;
+        default:
+            break;
+    }
+}
+
+/* --- SCANLIST_SELECT: navigate and toggle scan-list enable flags --- */
+static void HandleKeyScanList(uint8_t key) {
+    switch (key) {
+        case KEY_UP:
+            if (scanListSelectedIndex > 0) {
+                scanListSelectedIndex--;
+                if (scanListSelectedIndex < scanListScrollOffset)
+                    scanListScrollOffset = scanListSelectedIndex;
+            } else {
+                scanListSelectedIndex = validScanListCount - 1;
+            }
+            break;
+        case KEY_DOWN:
+            if (scanListSelectedIndex < validScanListCount - 1) {
+                scanListSelectedIndex++;
+                if (scanListSelectedIndex >= scanListScrollOffset + MAX_VISIBLE_LINES)
+                    scanListScrollOffset = scanListSelectedIndex - MAX_VISIBLE_LINES + 1;
+            } else {
+                scanListSelectedIndex = 0;
+            }
+            break;
+#ifdef ENABLE_SCANLIST_SHOW_DETAIL
+        case KEY_STAR: /* drill-down into channel list for selected scanlist */
+            selectedScanListIndex = scanListSelectedIndex;
+            BuildScanListChannels(validScanListIndices[selectedScanListIndex]);
+            scanListChannelsSelectedIndex = 0;
+            scanListChannelsScrollOffset  = 0;
+            SetState(SCANLIST_CHANNELS);
+            break;
+#endif
+        case KEY_4: /* toggle selected list, advance cursor */
+            ToggleScanList(validScanListIndices[scanListSelectedIndex], 0);
+            if (scanListSelectedIndex < validScanListCount - 1)
+                scanListSelectedIndex++;
+            break;
+        case KEY_5: /* activate only selected list */
+            ToggleScanList(validScanListIndices[scanListSelectedIndex], 1);
+            break;
+        case KEY_MENU: /* activate selected list and start scanning */
+            if (scanListSelectedIndex < MR_CHANNELS_LIST) {
+                ToggleScanList(validScanListIndices[scanListSelectedIndex], 1);
+                SetState(SPECTRUM);
+                ResetModifiers();
+                gForceModulation = 0;
+            }
+            break;
+        case KEY_EXIT:
+            SpectrumMonitor = 0;
+            SetState(SPECTRUM);
+            ResetModifiers();
+            gForceModulation = 0;
+            break;
+        default:
+            break;
+    }
+}
+
+#ifdef ENABLE_SCANLIST_SHOW_DETAIL
+/* --- SCANLIST_CHANNELS: scroll through channel detail list --- */
+static void HandleKeyScanListChannels(uint8_t key) {
+    switch (key) {
+        case KEY_UP:
+            if (scanListChannelsSelectedIndex > 0) {
+                scanListChannelsSelectedIndex--;
+                if (scanListChannelsSelectedIndex < scanListChannelsScrollOffset)
+                    scanListChannelsScrollOffset = scanListChannelsSelectedIndex;
+            }
+            break;
+        case KEY_DOWN:
+            if (scanListChannelsSelectedIndex < scanListChannelsCount - 1) {
+                scanListChannelsSelectedIndex++;
+                if (scanListChannelsSelectedIndex >= scanListChannelsScrollOffset + 3)
+                    scanListChannelsScrollOffset = scanListChannelsSelectedIndex - 3 + 1;
+            }
+            break;
+        case KEY_EXIT:
+            SetState(SCANLIST_SELECT);
+            break;
+        default:
+            break;
+    }
+}
+#endif /* ENABLE_SCANLIST_SHOW_DETAIL */
+
+/* --- PARAMETERS_SELECT: navigate settings, edit values --- */
+static void HandleKeyParameters(uint8_t key) {
+    switch (key) {
+        case KEY_UP:
+            if (parametersSelectedIndex > 0) {
+                parametersSelectedIndex--;
+                if (parametersSelectedIndex < parametersScrollOffset)
+                    parametersScrollOffset = parametersSelectedIndex;
+            } else {
+                parametersSelectedIndex = PARAMETER_COUNT - 1;
+            }
+            break;
+        case KEY_DOWN:
+            if (parametersSelectedIndex < PARAMETER_COUNT - 1) {
+                parametersSelectedIndex++;
+                if (parametersSelectedIndex >= parametersScrollOffset + MAX_VISIBLE_LINES)
+                    parametersScrollOffset = parametersSelectedIndex - MAX_VISIBLE_LINES + 1;
+            } else {
+                parametersSelectedIndex = 0;
+            }
+            break;
+        case KEY_3:
+        case KEY_1: {
+            bool isKey3 = (key == KEY_3);
+            switch (parametersSelectedIndex) {
+                case 0: /* RSSI Delay */
+                    DelayRssi = isKey3 ?
+                                (DelayRssi >= 12 ? 1  : DelayRssi + 1) :
+                                (DelayRssi <= 1  ? 12 : DelayRssi - 1);
+                    {
+                        static const int rssiMap[] = {1, 5, 10, 15, 20};
+                        settings.rssiTriggerLevelUp =
+                            (DelayRssi >= 1 && DelayRssi <= 5) ? rssiMap[DelayRssi - 1] : 20;
+                    }
+                    break;
+                case 1: /* Spectrum Delay */
+                    if (isKey3) {
+                        if (SpectrumDelay < 61000)
+                            SpectrumDelay += (SpectrumDelay < 10000) ? 1000 : 5000;
+                    } else if (SpectrumDelay >= 1000) {
+                        SpectrumDelay -= (SpectrumDelay < 10000) ? 1000 : 5000;
+                    }
+                    break;
+                case 2: /* Max listen time */
+                    if (isKey3) {
+                        if (++IndexMaxLT > LISTEN_STEP_COUNT) IndexMaxLT = 0;
+                    } else {
+                        if (IndexMaxLT == 0) IndexMaxLT = LISTEN_STEP_COUNT;
+                        else IndexMaxLT--;
+                    }
+                    MaxListenTime = listenSteps[IndexMaxLT];
+                    break;
+                case 3: /* Scan range start */
+                case 4: /* Scan range stop  */
+                    appMode = SCAN_RANGE_MODE;
+                    FreqInput();
+                    break;
+                case 5: /* Scan step */
+                    UpdateScanStep(isKey3);
+                    break;
+                case 6: /* Listen BW */
+                case 7: /* Modulation */
+                    if (isKey3 || key == KEY_1) {
+                        if (parametersSelectedIndex == 6)
+                            ToggleListeningBW(isKey3 ? 0 : 1);
+                        else
+                            ToggleModulation();
+                    }
+                    break;
+                case 8: /* RX Backlight */
+                    Backlight_On_Rx = !Backlight_On_Rx;
+                    break;
+                case 9: /* Power Save */
+                    if (isKey3) {
+                        if (++IndexPS > PS_STEP_COUNT) IndexPS = 0;
+                    } else {
+                        if (IndexPS == 0) IndexPS = PS_STEP_COUNT;
+                        else IndexPS--;
+                    }
+                    SpectrumSleepMs = PS_Steps[IndexPS];
+                    break;
+                case 10: /* Noise level OFF */
+                    Noislvl_OFF = isKey3 ?
+                                  (Noislvl_OFF >= 100 ? 30  : Noislvl_OFF + 1) :
+                                  (Noislvl_OFF <= 30  ? 100 : Noislvl_OFF - 1);
+                    Noislvl_ON = NoisLvl - NoiseHysteresis;
+                    break;
+                case 11: /* OSD popup duration */
+                    osdPopupSetting = isKey3 ?
+                                      (osdPopupSetting >= 5000 ? 0    : osdPopupSetting + 500) :
+                                      (osdPopupSetting <= 0    ? 5000 : osdPopupSetting - 500);
+                    break;
+                case 12: /* Record trigger */
+                    UOO_trigger = isKey3 ?
+                                  (UOO_trigger >= 50 ? 0  : UOO_trigger + 1) :
+                                  (UOO_trigger <= 0  ? 50 : UOO_trigger - 1);
+                    break;
+                case 13: /* Auto keylock */
+                    AUTO_KEYLOCK = isKey3 ?
+                                   (AUTO_KEYLOCK > 2  ? 0 : AUTO_KEYLOCK + 1) :
+                                   (AUTO_KEYLOCK <= 0 ? 3 : AUTO_KEYLOCK - 1);
+                    gKeylockCountdown = durations[AUTO_KEYLOCK];
+                    break;
+                case 14: /* Glitch max */
+                    if (isKey3) { if (GlitchMax < 75) GlitchMax += 5; }
+                    else        { if (GlitchMax > 10) GlitchMax -= 5; }
+                    break;
+                case 15: /* Sound boost */
+                    SoundBoost = !SoundBoost;
+                    break;
+                case 16: /* PTT emission mode */
+                    PttEmission = isKey3 ?
+                                  (PttEmission >= 2 ? 0 : PttEmission + 1) :
+                                  (PttEmission <= 0 ? 2 : PttEmission - 1);
+                    break;
+                case 17: /* Clear history */
+                    if (isKey3) ClearHistory();
+                    break;
+                case 18: /* Reset to defaults */
+                    if (isKey3) ClearSettings();
+                    break;
+            }
+            break;
+        }
+        case KEY_7:
+            SaveSettings();
+            break;
+        case KEY_EXIT:
+            SetState(SPECTRUM);
+            RelaunchScan();
+            ResetModifiers();
+            if (Key_1_pressed) APP_RunSpectrum(3);
+            break;
+        default:
+            break;
+    }
+}
+
+/* --- SPECTRUM state: main spectrum view keys, including list entry shortcuts --- */
+static void HandleKeySpectrum(uint8_t key) {
+
+    /* Shortcuts that open list sub-states from SPECTRUM */
+    if (appMode == SCAN_BAND_MODE && key == KEY_4) {
+        SetState(BAND_LIST_SELECT);
+        bandListSelectedIndex = 0;
+        bandListScrollOffset  = 0;
+        return;
+    }
+    if (appMode == CHANNEL_MODE && key == KEY_4) {
+        SetState(SCANLIST_SELECT);
+        scanListSelectedIndex = 0;
+        scanListScrollOffset  = 0;
+        return;
+    }
+    if (key == KEY_5) {
+        if (historyListActive) {
+            gHistoryScan = !gHistoryScan;
+            ShowOSDPopup(gHistoryScan ? "SCAN HISTORY ON" : "SCAN HISTORY OFF");
+            if (gHistoryScan) { gIsPeak = false; SpectrumMonitor = 0; }
+        } else {
+            SetState(PARAMETERS_SELECT);
+            if (!parametersStateInitialized) {
+                parametersSelectedIndex    = 0;
+                parametersScrollOffset     = 0;
+                parametersStateInitialized = true;
+            }
+        }
+        return;
+    }
+
+    switch (key) {
+        case KEY_STAR: {
+            int step = (settings.rssiTriggerLevelUp >= 20) ? 5 : 1;
+            settings.rssiTriggerLevelUp =
+                (settings.rssiTriggerLevelUp >= 50 ? 0 : settings.rssiTriggerLevelUp + step);
+            SPECTRUM_PAUSED = true;
+            Skip();
+            SetTrigger50();
+            break;
+        }
+        case KEY_F: {
+            int step = (settings.rssiTriggerLevelUp <= 20) ? 1 : 5;
+            settings.rssiTriggerLevelUp =
+                (settings.rssiTriggerLevelUp <= 0 ? 50 : settings.rssiTriggerLevelUp - step);
+            SPECTRUM_PAUSED = true;
+            Skip();
+            SetTrigger50();
+            break;
+        }
+        case KEY_3:
+            if (historyListActive) {
+                DeleteHistoryItem();
+            } else {
+                ToggleListeningBW(1);
+                char bwText[32];
+                sprintf(bwText, "BW: %s", bwNames[settings.listenBw]);
+                ShowOSDPopup(bwText);
+            }
+            break;
+        case KEY_9: {
+            ToggleModulation();
+            char modText[32];
+            sprintf(modText, "MOD: %s", gModulationStr[settings.modulationType]);
+            ShowOSDPopup(modText);
+            break;
+        }
+        case KEY_1:
+            Skip();
+            ShowOSDPopup("SKIPPED");
+            break;
+        case KEY_7:
+            if (historyListActive) {
+#ifdef ENABLE_EEPROM_512K
+                WriteHistory();
+#endif
+            } else {
+                SaveSettings();
+            }
+            break;
+        case KEY_2:
+            if (historyListActive) SaveHistoryToFreeChannel();
+            else classic = !classic;
+            break;
+        case KEY_8:
+            if (historyListActive) {
+                memset(HFreqs,       0, sizeof(HFreqs));
+                memset(HCount,       0, sizeof(HCount));
+                memset(HBlacklisted, 0, sizeof(HBlacklisted));
+                historyListIndex    = 0;
+                historyScrollOffset = 0;
+                indexFs             = 0;
+                SpectrumMonitor     = 0;
+            } else if (classic) {
+                ShowLines++;
+                if (ShowLines > 2 || ShowLines < 1) ShowLines = 1;
+                char viewText[15];
+                const char *viewName = (ShowLines == 2) ? "BIG" : "CLASSIC";
+                sprintf(viewText, "VIEW: %s", viewName);
+                ShowOSDPopup(viewText);
+            }
+            break;
+        case KEY_UP:
+            if (historyListActive) {
+                uint16_t count = CountValidHistoryItems();
+                SpectrumMonitor = 1;
+                if (!count) return;
+                if (historyListIndex == 0) {
+                    historyListIndex    = count - 1;
+                    historyScrollOffset = (count > MAX_VISIBLE_LINES) ? count - MAX_VISIBLE_LINES : 0;
+                } else {
+                    historyListIndex--;
+                }
+                if (historyListIndex < historyScrollOffset)
+                    historyScrollOffset = historyListIndex;
+                lastReceivingFreq = HFreqs[historyListIndex];
+                SetF(lastReceivingFreq);
+            } else if (appMode == SCAN_BAND_MODE) {
+                ToggleScanList(bl, 1);
+                settings.bandEnabled[bl + 1] = true;
+                RelaunchScan();
+            } else if (appMode == FREQUENCY_MODE) {
+                UpdateCurrentFreq(true);
+            } else if (appMode == CHANNEL_MODE) {
+                BuildValidScanListIndices();
+                scanListSelectedIndex = (scanListSelectedIndex < validScanListCount
+                                         ? scanListSelectedIndex + 1 : 0);
+                ToggleScanList(validScanListIndices[scanListSelectedIndex], 1);
+                SetState(SPECTRUM);
+                ResetModifiers();
+            } else if (appMode == SCAN_RANGE_MODE) {
+                uint32_t rstep = gScanRangeStop - gScanRangeStart;
+                gScanRangeStop  += rstep;
+                gScanRangeStart += rstep;
+                RelaunchScan();
+            } else {
+                Skip();
+            }
+            break;
+        case KEY_DOWN:
+            if (historyListActive) {
+                uint16_t count = CountValidHistoryItems();
+                SpectrumMonitor = 1;
+                if (!count) return;
+                if (++historyListIndex >= count) {
+                    historyListIndex    = 0;
+                    historyScrollOffset = 0;
+                }
+                if (historyListIndex >= historyScrollOffset + MAX_VISIBLE_LINES)
+                    historyScrollOffset = historyListIndex - MAX_VISIBLE_LINES + 1;
+                lastReceivingFreq = HFreqs[historyListIndex];
+                SetF(lastReceivingFreq);
+            } else if (appMode == SCAN_BAND_MODE) {
+                ToggleScanList(bl, 1);
+                settings.bandEnabled[bl - 1] = true;
+                RelaunchScan();
+            } else if (appMode == FREQUENCY_MODE) {
+                UpdateCurrentFreq(false);
+            } else if (appMode == CHANNEL_MODE) {
+                BuildValidScanListIndices();
+                scanListSelectedIndex = (scanListSelectedIndex < 1
+                                         ? validScanListCount - 1 : scanListSelectedIndex - 1);
+                ToggleScanList(validScanListIndices[scanListSelectedIndex], 1);
+                SetState(SPECTRUM);
+                ResetModifiers();
+            } else if (appMode == SCAN_RANGE_MODE) {
+                uint32_t rstep = gScanRangeStop - gScanRangeStart;
+                gScanRangeStop  -= rstep;
+                gScanRangeStart -= rstep;
+                RelaunchScan();
+            } else {
+                Skip();
+            }
+            break;
+        case KEY_4:
+            if (appMode != SCAN_RANGE_MODE) ToggleStepsCount();
+            break;
+        case KEY_0:
+            if (!historyListActive) {
+                CompactHistory();
+                historyListActive   = true;
+                historyListIndex    = 0;
+                historyScrollOffset = 0;
+                prevSpectrumMonitor = SpectrumMonitor;
+            }
+            break;
+  
+     case KEY_6: // next mode
+        NextAppMode();
+            break;
+        case KEY_SIDE1:
+            if (SPECTRUM_PAUSED) return;
+            if (++SpectrumMonitor > 2) SpectrumMonitor = 0;
+            if (SpectrumMonitor == 1) {
+                if (lastReceivingFreq < 1400000 || lastReceivingFreq > 130000000)
+                    lastReceivingFreq = (scanInfo.f >= 1400000) ? scanInfo.f : gScanRangeStart;
+                peak.f     = lastReceivingFreq;
+                scanInfo.f = lastReceivingFreq;
+                SetF(lastReceivingFreq);
+            }
+            if (SpectrumMonitor == 2) ToggleRX(1);
+            {
+                char monitorText[32];
+                const char *modes[] = {"NORMAL", "FREQ LOCK", "MONITOR"};
+                sprintf(monitorText, "MODE: %s", modes[SpectrumMonitor]);
+                ShowOSDPopup(monitorText);
+            }
+            break;
+        case KEY_SIDE2:
+            if (historyListActive) {
+                HBlacklisted[historyListIndex] = !HBlacklisted[historyListIndex];
+                ShowOSDPopup(HBlacklisted[historyListIndex] ? "BL ADDED" : "BL REMOVED");
+                RenderHistoryList();
+                gIsPeak = 0;
+                ToggleRX(false);
+                isBlacklistApplied = true;
+                ResetScanStats();
+                NextScanStep();
+            } else {
+                Blacklist();
+                WaitSpectrum = 0;
+                ShowOSDPopup("BL ADD");
+            }
+            break;
+        case KEY_PTT:
+            ExitAndCopyToVfo();
+            break;
+        case KEY_MENU:
+            if (historyListActive) scanInfo.f = HFreqs[historyListIndex];
+            SetState(STILL);
+            stillFreq = GetInitialStillFreq();
+            if (stillFreq >= 1400000 && stillFreq <= 130000000) {
+                scanInfo.f = stillFreq;
+                peak.f     = stillFreq;
+                SetF(stillFreq);
+            }
+            break;
+        case KEY_EXIT:
+            if (historyListActive) {
+                gHistoryScan        = false;
+                SetState(SPECTRUM);
+                historyListActive   = false;
+                SpectrumMonitor     = prevSpectrumMonitor;
+                SetF(scanInfo.f);
+                break;
+            }
+            if (WaitSpectrum) WaitSpectrum = 0;
+            DeInitSpectrum(0);
+            break;
+        default:
+            break;
+    }
+}
+
+// ============================================================
+// SECTION: Main keyboard dispatcher
+// ============================================================
+
+static void OnKeyDown(uint8_t key) {
+    if (!gBacklightCountdown) { BACKLIGHT_TurnOn(); return; }
+    BACKLIGHT_TurnOn();
+
+    /* Key-lock guard: only KEY_F unlocks */
+    if (gIsKeylocked) {
+        if (key == KEY_F) {
+            gIsKeylocked = false;
+            ShowOSDPopup("Unlocked");
+            gKeylockCountdown = durations[AUTO_KEYLOCK];
+        } else {
+            ShowOSDPopup("Unlock:F");
+        }
+        return;
+    }
+    gKeylockCountdown = durations[AUTO_KEYLOCK];
+
+    /* Dispatch to the handler for the currently active state */
+    switch (currentState) {
+        case BAND_LIST_SELECT:  HandleKeyBandList(key);         break;
+        case SCANLIST_SELECT:   HandleKeyScanList(key);         break;
+#ifdef ENABLE_SCANLIST_SHOW_DETAIL
+        case SCANLIST_CHANNELS: HandleKeyScanListChannels(key); break;
+#endif
+        case PARAMETERS_SELECT: HandleKeyParameters(key);       break;
+        default:                HandleKeySpectrum(key);         break;
+    }
 }
 
 static void OnKeyDownFreqInput(uint8_t key) {
@@ -2850,13 +2775,13 @@ static void UpdateScan() {
       NextHistoryScanStep();
       return;
   }
-  if (ScanIndex < GetStepsCount()) {
+  if (scanInfo.i <= GetStepsCount()) {
     NextScanStep();
     return;
   }
   
   newScanStart = true; 
-  Fmax = peak.f;
+  //Fmax = peak.f;
   
   if (SpectrumSleepMs) {
       BK4819_Sleep();
@@ -2871,16 +2796,6 @@ static void UpdateListening(void) { // called every 10ms
     static uint32_t stableFreq = 1;
     static uint16_t stableCount = 0;
     static bool SoundBoostsave = false; // Initialisation
-    
-    uint16_t rssi = GetRssi();
-    scanInfo.rssi = rssi;
-    uint16_t count = GetStepsCount() + 1;
-
-    if (count == 0) return;
-
-    uint16_t i = peak.i;
-    if (i >= count) i = count - 1;
-    
     if (SoundBoost != SoundBoostsave) {
         if (SoundBoost) {
             BK4819_WriteRegister(0x54, 0x90D1);    // default is 0x9009
@@ -2894,27 +2809,6 @@ static void UpdateListening(void) { // called every 10ms
         }
         SoundBoostsave = SoundBoost;
     }
-    // --- Mise à jour du buffer RSSI ---
-    if (count > 128) {
-        uint16_t pixel = (uint32_t)i * 128 / count;
-        if (pixel >= 128) pixel = 127;
-        rssiHistory[pixel] = rssi;
-    } else {
-        uint16_t j;
-        uint16_t base = 128 / count;
-        uint16_t rem  = 128 % count;
-        uint16_t startIndex = i * base + (i < rem ? i : rem);
-        uint16_t width      = base + (i < rem ? 1 : 0);
-        uint16_t endIndex   = startIndex + width;
-
-        uint16_t maxEnd = endIndex;
-        if (maxEnd > 128) maxEnd = 128;
-        for (j = startIndex; j < maxEnd; ++j) {
-            rssiHistory[j] = rssi;
-        }
-    }
-
-    // Détection de fréquence stable
     if (peak.f == stableFreq) {
         if (++stableCount >= 2) {  // ~600ms
             if (!SpectrumMonitor) FillfreqHistory();
@@ -3083,7 +2977,6 @@ void MR_LoadChannelAttributesFromFlash(uint16_t channel_id, ChannelAttributes_t*
 
 static void LoadActiveScanFrequencies(void)
 {   if(appMode!=CHANNEL_MODE)return;
-    //memset(ScanFrequencies, 0, (MR_CHANNEL_LAST + 1) * sizeof(uint32_t));
     memset(ScanFrequencies,0,sizeof(ScanFrequencies));
     scanChannelsCount = 0;
     ChannelAttributes_t cache;
@@ -3093,11 +2986,11 @@ static void LoadActiveScanFrequencies(void)
         uint32_t freq = FetchChannelFrequency(ch);
         if (freq) {
             if (settings.scanListEnabled[cache.scanlist-1])
-                {   ScanFrequencies[ch] = freq;
+                {   ScanFrequencies[scanChannelsCount] = freq;
                     scanChannelsCount++;
                 }
             }
-            else {ScanFrequencies[ch] = 0;}
+
     }
 }
 
@@ -3114,7 +3007,9 @@ static void ToggleScanList(int scanListNumber, int single )
       }
   }
 
-
+// ============================================================
+// SECTION: EEPROM / Settings persistence
+// ============================================================
 #include "index.h"
 
 bool IsVersionMatching(void) {
@@ -3327,8 +3222,9 @@ void ClearSettings()
   SaveSettings();
 }
 
-
-
+// ============================================================
+// SECTION: List item text helpers
+// ============================================================
 
 static bool GetScanListLabel(uint8_t scanListIndex, char* bufferOut) {
     ChannelAttributes_t att;
@@ -3388,242 +3284,304 @@ static void GetFilteredScanListText(uint16_t displayIndex, char* buffer) {
     GetScanListLabel(realIndex, buffer);
 }
 
-static void GetParametersText(uint16_t index, char *buffer) {
-    switch(index) {
-        case 0:
-            sprintf(buffer, "RSSI Delay: %2d ms", DelayRssi);
-            break;
-            
-        case 1:
-            if (SpectrumDelay < 65000) sprintf(buffer, "Spectrum Delay:%2us", SpectrumDelay / 1000);
-              else sprintf(buffer, "Spectrum Delay:00");
-            break;
-        case 2:
-            sprintf(buffer, "MaxListenTime:%s", labels[IndexMaxLT]);
-            break;
 
-        case 3: {
-            uint32_t start = gScanRangeStart;
-          sprintf(buffer, "Fstart: %u.%05u", start / 100000, start % 100000);
-            break;
-        }
-            
-        case 4: {
-            uint32_t stop = gScanRangeStop;
-          sprintf(buffer, "Fstop: %u.%05u", stop / 100000, stop % 100000);
-            break;
-        }
-      
-        case 5: {
-            uint32_t step = GetScanStep();
-          sprintf(buffer, step % 100 ? "Step: %uk%02u" : "Step: %uk", 
-                   step / 100, step % 100);
-            break;
-        }
-            
-        case 6:
-          sprintf(buffer, "Listen BW: %s", bwNames[settings.listenBw]);
-            break;
-            
-        case 7:
-          sprintf(buffer, "Modulation: %s", gModulationStr[settings.modulationType]);
-            break;
-        
-        case 8:
-            if (Backlight_On_Rx)
-          sprintf(buffer, "RX Backlight ON");
-          else sprintf(buffer, "RX Backlight OFF");
-            break;
+// ============================================================
+// SECTION: Unified list renderer
+// ============================================================
 
-        case 9:
-          sprintf(buffer, "Power Save: %s", labelsPS[IndexPS]);
-            break;
-        case 10:
-          sprintf(buffer, "Nois LVL OFF: %d", Noislvl_OFF);
-            break;
-        case 11:
-            if (osdPopupSetting) {
-                uint8_t seconds = osdPopupSetting / 1000;
-                uint8_t decimals = (osdPopupSetting % 1000) / 100;
-
-                if (decimals) {
-              sprintf(buffer, "Popups: %d.%ds", seconds, decimals);
-                } else {
-              sprintf(buffer, "Popups: %ds", seconds);
-                }
-            } else {
-            sprintf(buffer, "No Popups");
-            }
-            break;
-        
-        case 12:
-            sprintf(buffer, "Record Trig: %d", UOO_trigger);
-            break;
-        case 13:
-         if (AUTO_KEYLOCK) sprintf(buffer, "Keylock: %ds", durations[AUTO_KEYLOCK]/2);
-            else  sprintf(buffer, "Key Unlocked");
-            break;
-
-        case 14:
-           sprintf(buffer, "GlitchMax:%d", GlitchMax);
-            break;
-        case 15:
-            sprintf(buffer, "SoundBoost: %s", SoundBoost ? "ON" : "OFF");
-            break;
-        case 16:
-            if(PttEmission == 0)
-              sprintf(buffer, "PTT: Last VFO Freq");
-            else if (PttEmission == 1)
-              sprintf(buffer, "PTT: NINJA MODE");
-            else if (PttEmission == 2)
-              sprintf(buffer, "PTT: Last Received");
-            break;
-
-        case 17:
-            sprintf(buffer, "Clear History: >");
-            break;
-        case 18:
-            sprintf(buffer, "Reset Default: >");
-            break;
-        
-        default:
-            // Gestion d'un index inattendu (optionnel)
-            buffer[0] = '\0';
-            break;
-    }
+/* Approximate starting X pixel for right-aligned text.
+ * Uses 7px/char estimate (font char_width=6 + inter-char spacing=1). */
+#define CHAR_WIDTH_PX 7
+static uint8_t ListRightX(const char *s) {
+    size_t len = strlen(s);
+    return (len > 0 && len * CHAR_WIDTH_PX < 128)
+           ? (uint8_t)(128 - len * CHAR_WIDTH_PX) : 1;
 }
 
-static void GetBandItemText(uint16_t index, char* buffer) {
-    
-    sprintf(buffer, "%d:%-12s%s", 
-            index + 1, 
-            BParams[index].BandName,
-            settings.bandEnabled[index] ? "*" : "");
+/* Fill one display line with a solid black bar (selected-row highlight). */
+static void ListDrawSelectedBg(uint8_t line) {
+    for (uint8_t x = 0; x < LCD_WIDTH; x++)
+        for (uint8_t y = (uint8_t)(line * 8); y < (uint8_t)((line + 1) * 8); y++)
+            PutPixel(x, y, true);
 }
 
-static void GetHistoryItemText(uint16_t index, char* buffer) {
-    char freqStr[10];
-    char Name[12] = ""; // 10 chars max + 1 pour \0 + 1 pour sécurité
-    uint8_t dcount;
-    uint32_t f = HFreqs[index];
-    buffer[0] = '\0';
-    if (!f) return;
-    snprintf(freqStr, sizeof(freqStr), "%u.%05u", f / 100000, f % 100000);
-    RemoveTrailZeros(freqStr);
-    uint16_t Hchannel = BOARD_gMR_fetchChannel(f);
-        dcount = HCount[index];
-    
-    // Lecture du nom du canal (Argument 1: Index, Argument 2: Buffer)
-    if (Hchannel != 0xFFFF) {
-        ReadChannelName(Hchannel, Name);
-        Name[10] = '\0'; // Troncature explicite du nom à 10 caractères max
-    }
-    
-    const char *blacklistPrefix = HBlacklisted[index] ? "#" : "";
-
-    // --- 2. Détermination de l'espace nécessaire (Max 18 chars) ---
-    const size_t MAX_LINE_CHARS = 18; 
-    
-    // Construction de la chaîne du compteur (Ex: ":5" ou ":1234")
-    char dcountStr[6]; 
-    snprintf(dcountStr, sizeof(dcountStr), ":%u", dcount);
-
-    size_t len_prefix = strlen(blacklistPrefix);
-    size_t len_freq = strlen(freqStr);
-    size_t len_name = strlen(Name);
-    size_t len_dcount = strlen(dcountStr);
-
-    // Longueur requise pour la partie non-fréquence : [Prefix] + [Espace] + [Name] + [Dcount]
-    size_t critical_len = len_prefix + 1 + len_name + len_dcount; 
-    
-    size_t space_for_freq = 0;
-    
-    if (MAX_LINE_CHARS > critical_len) {
-        // Cas nominal : Il y a de la place après le Nom et le Compteur.
-        space_for_freq = MAX_LINE_CHARS - critical_len;
-    } else {
-        // Cas critique : Le Nom et le Compteur sont trop longs. On supprime le Nom.
-        
-        // Recalcul de la longueur critique sans le Nom et l'espace qui le précède.
-        critical_len = len_prefix + 1 + len_dcount;
-        
-        if (MAX_LINE_CHARS > critical_len) {
-            space_for_freq = MAX_LINE_CHARS - critical_len;
-        } else {
-            // Cas très critique : On donne tout l'espace sauf le compteur (très court)
-            space_for_freq = MAX_LINE_CHARS - len_dcount; 
-        }
-        
-        // Suppression du nom pour l'affichage final
-        Name[0] = '\0';
-        len_name = 0;
-    }
-
-    // --- 3. Construction de la chaîne finale (avec troncature de la Fréquence) ---
-    
-    // La longueur finale à afficher pour la fréquence (min(espace_disponible, longueur_réelle))
-    size_t final_freq_len = (space_for_freq > len_freq) ? len_freq : space_for_freq;
-    
-    // Le format : [Prefix][Freq Tronquée][Espace si Nom][Name][Dcount]
-    
-    // Le snprintf final doit toujours garantir que la taille n'est pas dépassée (19)
-    snprintf(buffer, 19, "%s%.*s%s%s%s", 
-             blacklistPrefix,
-             (int)final_freq_len, // Troncature dynamique de la fréquence
-             freqStr, 
-             (len_name > 0) ? " " : "", // Espace si le Nom n'est pas vide (géré par la suppression ci-dessus)
-             Name, 
-             dcountStr);
+/* Draw a single list row.
+ *   left  - left-aligned text starting at x=1
+ *   right - right-aligned text (omitted when empty)
+ *   inv   - true for selected row (white chars on black)
+ *
+ * The background is drawn manually via ListDrawSelectedBg so that
+ * UI_PrintStringSmall is always called with bg=0 (no font-level fill).
+ * This avoids rendering artefacts where the font renderer's background
+ * fill can spill outside the intended row or conflict with the manual bar. */
+static void ListDrawRow(uint8_t line, const char *left, const char *right, bool inv) {
+    if (inv) ListDrawSelectedBg(line);
+    uint8_t bg = inv ? 1 : 0;
+    if (inv) ListDrawSelectedBg(line);
+    UI_PrintStringSmall(left, 1, 0, line, bg);
+    if (right[0])
+        UI_PrintStringSmall(right, ListRightX(right), 0, line, bg);
 }
 
-static void RenderList(const char* title, uint16_t numItems, uint16_t selectedIndex, uint16_t scrollOffset,
-                      void (*getItemText)(uint16_t index, char* buffer), bool invertSelectedBg) {
-    // Clear display buffer
+/* Unified list renderer.
+ *
+ * Header (line 0):
+ *   useMeter=true  -> draw signal-strength meter bar when in FL/Monitor mode.
+ *   useMeter=false -> draw title text.
+ *
+ * Single-line mode (twoLineMode=false):
+ *   Up to MAX_VISIBLE_LINES (6) items, one display line each.
+ *   row.left  = left-aligned text
+ *   row.right = right-aligned text (omitted when empty)
+ *
+ * Two-line mode (twoLineMode=true):
+ *   Up to 3 items; each occupies 2 consecutive display lines.
+ *   row.left  = first line text  (left-aligned)
+ *   row.right = second line text (left-aligned)
+ */
+static void RenderUnifiedList(
+    const char  *title,
+    bool         useMeter,
+    uint16_t     numItems,
+    uint16_t     selectedIndex,
+    uint16_t     scrollOffset,
+    bool         invertSelected,
+    bool         twoLineMode,
+    GetListRowFn getRow)
+{
     memset(gFrameBuffer, 0, sizeof(gFrameBuffer));
-    
-    // Draw title - wyrównany do lewej dla maksymalnego wykorzystania miejsca
-    if (!SpectrumMonitor) UI_PrintStringSmall(title, 1, LCD_WIDTH - 1, 0,0);
-    // List parameters for UI_PrintStringSmall (lines 1-7 available)
-    const uint8_t FIRST_ITEM_LINE = 1;  // Start from line 1 (line 0 is title)
-    const uint8_t MAX_LINES = 6;        // Lines 1-7 available for items
-    
-    // Adjust scroll offset if needed
-    if (numItems <= MAX_LINES) {
+
+    /* Header row */
+    if (useMeter && historyListActive && SpectrumMonitor > 0)
+        DrawMeter(0);
+    else if (title)
+        UI_PrintStringSmall(title, 1, LCD_WIDTH - 1, 0, 0);
+
+    const uint8_t maxItems = twoLineMode ? 3 : MAX_VISIBLE_LINES;
+
+    /* Clamp scroll offset */
+    if (numItems <= maxItems)
         scrollOffset = 0;
-    } else if (selectedIndex < scrollOffset) {
+    else if (selectedIndex < scrollOffset)
         scrollOffset = selectedIndex;
-    } else if (selectedIndex >= scrollOffset + MAX_LINES) {
-        scrollOffset = selectedIndex - MAX_LINES + 1;
-    }
-    
-    const uint8_t MAX_CHARS_PER_LINE = 18;
-    for (uint8_t i = 0; i < MAX_LINES; i++) {
+    else if (selectedIndex >= scrollOffset + maxItems)
+        scrollOffset = selectedIndex - maxItems + 1;
+
+    for (uint8_t i = 0; i < maxItems; i++) {
         uint16_t itemIndex = i + scrollOffset;
         if (itemIndex >= numItems) break;
-        char itemText[32];
-        getItemText(itemIndex, itemText);
-        uint16_t lineNumber = FIRST_ITEM_LINE + i;
-        if (itemIndex == selectedIndex) {
-        if (invertSelectedBg) {
-          for (uint8_t x = 0; x < LCD_WIDTH; x++) {
-            for (uint8_t y = lineNumber * 8; y < (lineNumber + 1) * 8; y++) {
-              PutPixel(x, y, true);
-            }
-          }
-        }
-        char displayText[MAX_CHARS_PER_LINE + 1];
-        strcpy(displayText, itemText);
-        char selectedText[MAX_CHARS_PER_LINE + 2];
-        snprintf(selectedText, sizeof(selectedText), "%s", displayText);
-        UI_PrintStringSmall(selectedText, 1, 0, lineNumber,1);
+
+        ListRow row;
+        row.left[0]  = '\0';
+        row.right[0] = '\0';
+        getRow(itemIndex, &row);
+
+        bool sel = (itemIndex == selectedIndex);
+
+        if (!twoLineMode) {
+            if (row.left[0] == '\0') continue; /* skip empty items */
+            ListDrawRow((uint8_t)(1 + i), row.left, row.right, sel && invertSelected);
         } else {
-            UI_PrintStringSmall(itemText, 1, 0, lineNumber,0); // Minimalne wcięcie
-          }
-          
+            /* Two-line mode: item occupies lines (1+i*2) and (2+i*2) */
+            uint8_t line1 = (uint8_t)(1 + i * 2);
+            uint8_t line2 = (uint8_t)(2 + i * 2);
+            bool inv = sel && invertSelected;
+            if (inv) {
+                ListDrawSelectedBg(line1);
+                ListDrawSelectedBg(line2);
+            }
+            UI_PrintStringSmall(row.left,  1, 0, line1, inv ? 1 : 0);
+            UI_PrintStringSmall(row.right, 1, 0, line2, inv ? 1 : 0);
+        }
     }
-    if (historyListActive && SpectrumMonitor > 0) DrawMeter(0);
     ST7565_BlitFullScreen();
 }
+
+/* ---- GetRow callbacks for each list type ---- */
+
+/* History list: frequency[+channel name] on left, TX count on right */
+static void GetHistoryRow(uint16_t index, ListRow *row) {
+    row->left[0]  = '\0';
+    row->right[0] = '\0';
+    uint32_t f = HFreqs[index];
+    if (!f) return;
+
+    char freqStr[10];
+    snprintf(freqStr, sizeof(freqStr), "%u.%05u", f / 100000, f % 100000);
+    RemoveTrailZeros(freqStr);
+    snprintf(row->right, sizeof(row->right), ":%u", HCount[index]);
+
+    char Name[12] = "";
+    uint16_t ch = BOARD_gMR_fetchChannel(f);
+    if (ch != 0xFFFF) {
+        ReadChannelName(ch, Name);
+        Name[10] = '\0';
+    }
+    const char *prefix = HBlacklisted[index] ? "#" : "";
+    if (Name[0])
+        snprintf(row->left, sizeof(row->left), "%s%s %s", prefix, freqStr, Name);
+    else
+        snprintf(row->left, sizeof(row->left), "%s%s", prefix, freqStr);
+}
+
+/* Scanlist multiselect: "N:name" on left, "*" on right when enabled */
+static void GetScanListRow(uint16_t displayIndex, ListRow *row) {
+    char buf[20];
+    GetFilteredScanListText(displayIndex, buf);
+    /* Strip trailing '*' marker and padding spaces added by GetScanListLabel */
+    size_t len = strlen(buf);
+    bool enabled = (len > 0 && buf[len - 1] == '*');
+    if (enabled) buf[--len] = '\0';
+    while (len > 0 && buf[len - 1] == ' ') buf[--len] = '\0';
+    snprintf(row->left, sizeof(row->left), "%s", buf);
+    if (enabled) { row->right[0] = '*'; row->right[1] = '\0'; }
+    else           row->right[0] = '\0';
+}
+
+/* Band multiselect: "N:bandname" on left, "*" on right when enabled */
+static void GetBandRow(uint16_t index, ListRow *row) {
+    snprintf(row->left, sizeof(row->left), "%d:%s", index + 1, BParams[index].BandName);
+    if (settings.bandEnabled[index]) { row->right[0] = '*'; row->right[1] = '\0'; }
+    else                               row->right[0] = '\0';
+}
+
+/* Parameters list: setting name on left, current value on right */
+static void GetParametersRow(uint16_t index, ListRow *row) {
+    row->right[0] = '\0';
+    switch (index) {
+        case 0:
+            snprintf(row->left,  sizeof(row->left),  "RSSI Delay:");
+            snprintf(row->right, sizeof(row->right), "%dms", DelayRssi);
+            break;
+        case 1:
+            snprintf(row->left, sizeof(row->left), "Spectrum Delay:");
+            if (SpectrumDelay < 65000)
+                snprintf(row->right, sizeof(row->right), "%us", SpectrumDelay / 1000);
+            else
+                strncpy(row->right, "OFF", sizeof(row->right) - 1);
+            break;
+        case 2:
+            snprintf(row->left,  sizeof(row->left),  "MaxListenTime:");
+            snprintf(row->right, sizeof(row->right), "%s", labels[IndexMaxLT]);
+            break;
+        case 3: {
+            /* Preserve full frequency precision with trailing-zero removal */
+            char tmp[12];
+            snprintf(tmp, sizeof(tmp), "%u.%05u",
+                     gScanRangeStart / 100000, gScanRangeStart % 100000);
+            RemoveTrailZeros(tmp);
+            snprintf(row->left,  sizeof(row->left),  "Fstart:");
+            snprintf(row->right, sizeof(row->right), "%s", tmp);
+            break;
+        }
+        case 4: {
+            /* Preserve full frequency precision with trailing-zero removal */
+            char tmp[12];
+            snprintf(tmp, sizeof(tmp), "%u.%05u",
+                     gScanRangeStop / 100000, gScanRangeStop % 100000);
+            RemoveTrailZeros(tmp);
+            snprintf(row->left,  sizeof(row->left),  "Fstop:");
+            snprintf(row->right, sizeof(row->right), "%s", tmp);
+            break;
+        }
+        case 5: {
+            uint32_t step = GetScanStep();
+            snprintf(row->left, sizeof(row->left), "Step:");
+            snprintf(row->right, sizeof(row->right),
+                     step % 100 ? "%uk%02u" : "%uk", step / 100, step % 100);
+            break;
+        }
+        case 6:
+            snprintf(row->left,  sizeof(row->left),  "Listen BW:");
+            snprintf(row->right, sizeof(row->right), "%s", bwNames[settings.listenBw]);
+            break;
+        case 7:
+            snprintf(row->left,  sizeof(row->left),  "Modulation:");
+            snprintf(row->right, sizeof(row->right), "%s", gModulationStr[settings.modulationType]);
+            break;
+        case 8:
+            snprintf(row->left, sizeof(row->left), "RX Backlight:");
+            strncpy(row->right, Backlight_On_Rx ? "ON" : "OFF", sizeof(row->right) - 1);
+            break;
+        case 9:
+            snprintf(row->left,  sizeof(row->left),  "Power Save:");
+            snprintf(row->right, sizeof(row->right), "%s", labelsPS[IndexPS]);
+            break;
+        case 10:
+            snprintf(row->left,  sizeof(row->left),  "Nois LVL OFF:");
+            snprintf(row->right, sizeof(row->right), "%d", Noislvl_OFF);
+            break;
+        case 11:
+            snprintf(row->left, sizeof(row->left), "Popups:");
+            if (osdPopupSetting) {
+                uint8_t sec = osdPopupSetting / 1000;
+                uint8_t dec = (osdPopupSetting % 1000) / 100;
+                if (dec) snprintf(row->right, sizeof(row->right), "%d.%ds", sec, dec);
+                else     snprintf(row->right, sizeof(row->right), "%ds", sec);
+            } else {
+                strncpy(row->right, "OFF", sizeof(row->right) - 1);
+            }
+            break;
+        case 12:
+            snprintf(row->left,  sizeof(row->left),  "Record Trig:");
+            snprintf(row->right, sizeof(row->right), "%d", UOO_trigger);
+            break;
+        case 13:
+            if (AUTO_KEYLOCK) {
+                snprintf(row->left,  sizeof(row->left),  "Keylock:");
+                snprintf(row->right, sizeof(row->right), "%ds", durations[AUTO_KEYLOCK] / 2);
+            } else {
+                snprintf(row->left, sizeof(row->left), "Key Unlocked");
+            }
+            break;
+        case 14:
+            snprintf(row->left,  sizeof(row->left),  "GlitchMax:");
+            snprintf(row->right, sizeof(row->right), "%d", GlitchMax);
+            break;
+        case 15:
+            snprintf(row->left, sizeof(row->left), "SoundBoost:");
+            strncpy(row->right, SoundBoost ? "ON" : "OFF", sizeof(row->right) - 1);
+            break;
+        case 16:
+            snprintf(row->left, sizeof(row->left), "PTT:");
+            if      (PttEmission == 0) strncpy(row->right, "VFO Freq", sizeof(row->right) - 1);
+            else if (PttEmission == 1) strncpy(row->right, "NINJA",    sizeof(row->right) - 1);
+            else                       strncpy(row->right, "Last RX",  sizeof(row->right) - 1);
+            break;
+        case 17:
+            snprintf(row->left, sizeof(row->left), "Clear History");
+            strncpy(row->right, ">", sizeof(row->right) - 1);
+            break;
+        case 18:
+            snprintf(row->left, sizeof(row->left), "Reset Default");
+            strncpy(row->right, ">", sizeof(row->right) - 1);
+            break;
+        default:
+            row->left[0] = '\0';
+            break;
+    }
+}
+
+#ifdef ENABLE_SCANLIST_SHOW_DETAIL
+/* ScanList channel detail (two-line mode):
+ *   row.left  = "NNN: channel_name"  (line 1)
+ *   row.right = "    freq"           (line 2) */
+static void GetScanListChannelRow(uint16_t index, ListRow *row) {
+    uint16_t channelIndex = scanListChannels[index];
+    char channel_name[12];
+    SETTINGS_FetchChannelName(channel_name, channelIndex);
+    uint32_t freq = gMR_ChannelFrequencyAttributes[channelIndex].Frequency;
+    char freqStr[16];
+    sprintf(freqStr, " %u.%05u", freq / 100000, freq % 100000);
+    RemoveTrailZeros(freqStr);
+    snprintf(row->left,  sizeof(row->left),  "%3d: %s", channelIndex + 1, channel_name);
+    snprintf(row->right, sizeof(row->right), "    %s", freqStr);
+}
+#endif
+
+// ============================================================
+// SECTION: List screen render functions
+// ============================================================
 
 static void RenderScanListSelect() {
     if (refreshScanListName) {
@@ -3631,146 +3589,58 @@ static void RenderScanListSelect() {
         refreshScanListName = false;
     }
     uint8_t selectedCount = 0;
-  for (uint8_t i = 0; i < validScanListCount; i++) {
-        if (settings.scanListEnabled[validScanListIndices[i]]) {
-            selectedCount++;
-        }
-      }
+    for (uint8_t i = 0; i < validScanListCount; i++) {
+        if (settings.scanListEnabled[validScanListIndices[i]]) selectedCount++;
+    }
     char title[24];
     snprintf(title, sizeof(title), "SCANLISTS: %u/%u", selectedCount, validScanListCount);
-    RenderList(title, validScanListCount,scanListSelectedIndex, scanListScrollOffset, GetFilteredScanListText, true);
+    RenderUnifiedList(title, false, validScanListCount, scanListSelectedIndex,
+                      scanListScrollOffset, true, false, GetScanListRow);
 }
 
 static void RenderParametersSelect() {
-  RenderList("PARAMETERS:", PARAMETER_COUNT,parametersSelectedIndex, parametersScrollOffset, GetParametersText, false);
+    RenderUnifiedList("PARAMETERS:", false, PARAMETER_COUNT, parametersSelectedIndex,
+                      parametersScrollOffset, true, false, GetParametersRow);
 }
 
 
 #ifdef ENABLE_FULL_BAND
-      void RenderBandSelect() {RenderList("BANDS:", ARRAY_SIZE(BParams),bandListSelectedIndex, bandListScrollOffset, GetBandItemText, false);}
+void RenderBandSelect() {
+    RenderUnifiedList("BANDS:", false, ARRAY_SIZE(BParams), bandListSelectedIndex,
+                      bandListScrollOffset, true, false, GetBandRow);
+}
 #endif
 
 static void RenderHistoryList() {
-    char headerString[24];
-    // Clear display buffer
-    memset(gFrameBuffer, 0, sizeof(gFrameBuffer));
-
     uint16_t count = CountValidHistoryItems();
-    
-    if (!SpectrumMonitor) {
-        sprintf(headerString, "HISTORY: %d", count);
-      UI_PrintStringSmall(headerString, 1, LCD_WIDTH - 1, 0, 0);
-    } else {
-        DrawMeter(0);
-    }
-    
-    const uint16_t FIRST_ITEM_LINE = 1;
-    const uint16_t MAX_LINES = 6;
-    
-    uint16_t scrollOffset = historyScrollOffset;
-    uint16_t selectedIndex = historyListIndex;
-    
-    if (count <= MAX_LINES) {
-        scrollOffset = 0;
-    } else if (selectedIndex < scrollOffset) {
-        scrollOffset = selectedIndex;
-    } else if (selectedIndex >= scrollOffset + MAX_LINES) {
-        scrollOffset = selectedIndex - MAX_LINES + 1;
-    }
-    
-    uint8_t linesDrawn = 0;
-
-    for (uint8_t i = 0; linesDrawn < MAX_LINES; i++) {
-        uint16_t itemIndex = i + scrollOffset;
-        if (itemIndex >= count) break;
-
-        char itemText[32];
-        GetHistoryItemText(itemIndex, itemText);
-
-        if (itemText[0] == '\0') continue;
-
-        uint16_t lineNumber = FIRST_ITEM_LINE + linesDrawn;
-
-        if (itemIndex == selectedIndex) {
-            for (uint8_t x = 0; x < LCD_WIDTH; x++) {
-                for (uint8_t y = lineNumber * 8; y < (lineNumber + 1) * 8; y++) {
-                    PutPixel(x, y, true);
-                }
-            }
-            UI_PrintStringSmall(itemText, 1, 0, lineNumber, 1);
-        } else {
-            UI_PrintStringSmall(itemText, 1, 0, lineNumber, 0);
-        }
-
-        linesDrawn++;
-    }
+    char title[24];
+    sprintf(title, "HISTORY: %d", count);
+    /* title shown in normal mode; signal meter shown in FL/Monitor mode via useMeter=true */
+    RenderUnifiedList(title, true, count, historyListIndex,
+                      historyScrollOffset, true, false, GetHistoryRow);
 }
 
 #ifdef ENABLE_SCANLIST_SHOW_DETAIL
 static void BuildScanListChannels(uint8_t scanListIndex) {
     scanListChannelsCount = 0;
     ChannelAttributes_t att;
-    
-    for (uint16_t i = 0; i < MR_CHANNEL_LAST+1; i++) {
+    for (uint16_t i = 0; i < MR_CHANNEL_LAST + 1; i++) {
         att = gMR_ChannelAttributes[i];
         if (att.scanlist == scanListIndex + 1) {
-            if (scanListChannelsCount < MR_CHANNEL_LAST+1) {
+            if (scanListChannelsCount < MR_CHANNEL_LAST + 1)
                 scanListChannels[scanListChannelsCount++] = i;
-            }
         }
     }
 }
 
+/* Two-line detail view: 3 items visible, each occupying 2 display lines.
+ * Header shows the scanlist number; items rendered via RenderUnifiedList. */
 static void RenderScanListChannels() {
     char headerString[24];
     uint8_t realScanListIndex = validScanListIndices[selectedScanListIndex];
-  sprintf(headerString, "SL %d CHANNELS:", realScanListIndex + 1);
-    
-    // Specjalna obsługa dwulinijkowa
-    RenderScanListChannelsDoubleLines(headerString, scanListChannelsCount, 
-                                     scanListChannelsSelectedIndex,
-                                     scanListChannelsScrollOffset);
+    sprintf(headerString, "SL %d CHANNELS:", realScanListIndex + 1);
+    RenderUnifiedList(headerString, false, scanListChannelsCount,
+                      scanListChannelsSelectedIndex, scanListChannelsScrollOffset,
+                      true, true, GetScanListChannelRow);
 }
-
-static void RenderScanListChannelsDoubleLines(const char* title, uint8_t numItems, 
-                                             uint8_t selectedIndex, uint8_t scrollOffset) {
-    memset(gFrameBuffer, 0, sizeof(gFrameBuffer));
-    UI_PrintStringSmall(title, 1, 0, 0,1);
-    
-    const uint8_t MAX_ITEMS_VISIBLE = 3; // 3 kanały x 2 linie = 6 linii
-    
-    for (uint8_t i = 0; i < MAX_ITEMS_VISIBLE; i++) {
-        uint8_t itemIndex = i + scrollOffset;
-        if (itemIndex >= numItems) break;
-        
-        uint16_t channelIndex = scanListChannels[itemIndex];
-        char channel_name[12];
-        SETTINGS_FetchChannelName(channel_name, channelIndex);
-        
-        uint32_t freq = gMR_ChannelFrequencyAttributes[channelIndex].Frequency;
-        char freqStr[16];
-        sprintf(freqStr, " %u.%05u", freq/100000, freq%100000);
-        RemoveTrailZeros(freqStr);
-        
-        uint8_t line1 = 1 + i * 2;
-        uint8_t line2 = 2 + i * 2;
-        
-        char nameText[20], freqText[20];
-        if (itemIndex == selectedIndex) {
-            sprintf(nameText, "%3d: %s", channelIndex + 1, channel_name);
-            sprintf(freqText, "    %s", freqStr);
-            UI_PrintStringSmall(nameText, 1, 0, line1,1);
-            UI_PrintStringSmall(freqText, 1, 0, line2,1);
-        } else {
-            sprintf(nameText, "%3d: %s", channelIndex + 1, channel_name);
-            sprintf(freqText, "    %s", freqStr);
-            UI_PrintStringSmall(nameText, 1, 0, line1,0);
-            UI_PrintStringSmall(freqText, 1, 0, line2,0);
-        }
-        
-
-    }
-    
-    ST7565_BlitFullScreen();
-}
-#endif // ENABLE_SCANLIST_SHOW_DETAIL
+#endif /* ENABLE_SCANLIST_SHOW_DETAIL */

@@ -89,55 +89,107 @@ void UI_PrintString(const char *pString, uint8_t Start, uint8_t End, uint8_t Lin
 void UI_PrintStringSmall(const char *pString, uint8_t Start, uint8_t End, uint8_t Line, uint8_t background)
 {
     const size_t Length = strlen(pString);
-
     const unsigned int char_width  = ARRAY_SIZE(gFontSmall[0]);
-    const unsigned int spacing     = 1;   // espacement minimal entre caractères
-    const unsigned int space_width = 4;   // largeur spéciale pour ' '
+    const unsigned int spacing     = 1;
+    const unsigned int space_width = 4;
 
-    // cast pour éviter le warning
     size_t start_pos = (size_t)Start;
     size_t end_pos   = (size_t)End;
 
-    if (end_pos > start_pos)
-        start_pos += (((end_pos - start_pos) - (Length * (char_width + spacing))) + 1) / 2;
+    if (Line >= ARRAY_SIZE(gFrameBuffer))
+        return;
 
-    uint8_t *pFb = gFrameBuffer[Line] + start_pos;
-    
-    // remplir le fond
-    if (background) memset(pFb, 0xFF, 127);
-    
-    // position courante
-    uint8_t *cursor = pFb;
+    // policz rzeczywistą szerokość tekstu
+    size_t text_width = 0;
+    for (size_t i = 0; i < Length; i++) {
+        char c = pString[i];
+
+        if (c > ' ') {
+            const unsigned int index = (unsigned int)c - ' ' - 1;
+            if (index < ARRAY_SIZE(gFontSmall)) {
+                unsigned int char_width_used = char_width;
+                while (char_width_used > 0 && gFontSmall[index][char_width_used - 1] == 0)
+                    char_width_used--;
+
+                text_width += char_width_used;
+                if (i + 1 < Length)
+                    text_width += spacing;
+            }
+        } else {
+            text_width += space_width;
+        }
+    }
+
+    // centrowanie tylko jeśli End > Start
+    if (end_pos > start_pos) {
+        size_t available = end_pos - start_pos;
+        if (available > text_width)
+            start_pos += (available - text_width + 1) / 2;
+    }
+
+    if (start_pos >= 128)
+        return;
+
+    // ogranicz maksymalny obszar rysowania
+    size_t draw_limit = 128;
+    if (end_pos > start_pos && end_pos < draw_limit)
+        draw_limit = end_pos;
+
+    if (draw_limit <= start_pos)
+        return;
+
+    uint8_t *line_buf = gFrameBuffer[Line];
+
+    // wypełnij tło tylko pod tekstem
+    if (background) {
+        size_t fill_width = text_width;
+        if (start_pos + fill_width > draw_limit)
+            fill_width = draw_limit - start_pos;
+
+        memset(line_buf + start_pos, 0xFF, fill_width);
+    }
+
+    size_t cursor_pos = start_pos;
 
     for (size_t i = 0; i < Length; i++)
     {
-        if (pString[i] > ' ')
+        char c = pString[i];
+
+        if (c > ' ')
         {
-            const unsigned int index = (unsigned int)pString[i] - ' ' - 1;
+            const unsigned int index = (unsigned int)c - ' ' - 1;
             if (index < ARRAY_SIZE(gFontSmall))
             {
                 unsigned int char_width_used = char_width;
                 while (char_width_used > 0 && gFontSmall[index][char_width_used - 1] == 0)
                     char_width_used--;
 
-                uint8_t *dst = cursor;
-                switch (background) {
-                    case 0:
-                        memmove(dst, gFontSmall[index], char_width_used);
-                        break;
-                    case 1:
-                        for (unsigned int c = 0; c < char_width_used; c++)
-                            dst[c] = ~gFontSmall[index][c];
-                        break;
+                if (cursor_pos < draw_limit) {
+                    size_t writable = char_width_used;
+                    if (cursor_pos + writable > draw_limit)
+                        writable = draw_limit - cursor_pos;
+
+                    switch (background) {
+                        case 0:
+                            memmove(line_buf + cursor_pos, gFontSmall[index], writable);
+                            break;
+                        case 1:
+                            for (size_t c = 0; c < writable; c++)
+                                line_buf[cursor_pos + c] = (uint8_t)~gFontSmall[index][c];
+                            break;
+                    }
                 }
 
-                cursor += char_width_used + spacing;
+                cursor_pos += char_width_used + spacing;
             }
         }
-        else // espace
+        else
         {
-            cursor += space_width;
+            cursor_pos += space_width;
         }
+
+        if (cursor_pos >= draw_limit)
+            break;
     }
 }
 
