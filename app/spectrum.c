@@ -602,45 +602,30 @@ static void ReadChannelName(uint16_t Channel, char *name) {
     TrimTrailingChars(name);
 }
 
-// *****************************************************************************
-// Fonction : Supprime la fréquence sélectionnée de la liste d'historique en RAM
-// *****************************************************************************
+
 static void DeleteHistoryItem(void) {
-    // Vérification de base
     if (!historyListActive || indexFs == 0) return;
     if (historyListIndex >= indexFs) {
-        // L'index est hors limite, on le corrige (au dernier élément valide)
         historyListIndex = (indexFs > 0) ? indexFs - 1 : 0;
         if (indexFs == 0) return;
     }
-
     uint16_t indexToDelete = historyListIndex;
-
-    // Décaler tous les éléments suivants d'une position vers le haut
     for (uint16_t i = indexToDelete; i < indexFs - 1; i++) {
         HFreqs[i]       = HFreqs[i + 1];
         HCount[i]       = HCount[i + 1];
         HBlacklisted[i] = HBlacklisted[i + 1];
     }
-    
-    // Réduire le compteur d'éléments dans la liste
     indexFs--;
     
-    // Nettoyer la nouvelle dernière entrée et rétablir le marqueur de fin logique
     HFreqs[indexFs]       = 0;
     HCount[indexFs]       = 0;
-    HBlacklisted[indexFs] = 0xFF; // Rétablit le marqueur 0xFF pour la cohérence
+    HBlacklisted[indexFs] = 0xFF;
 
-    // Ajuster l'index de sélection
-    // Si nous avons supprimé le dernier élément, la sélection passe au nouvel élément final.
     if (historyListIndex >= indexFs && indexFs > 0) {
         historyListIndex = indexFs - 1;
     } else if (indexFs == 0) {
         historyListIndex = 0;
     }
-    
-    // Mettre à jour l'affichage
-    
     ShowOSDPopup("Deleted");
     
 }
@@ -1679,6 +1664,7 @@ static void Skip() {
 void NextAppMode(void) {
         // 0 = FR, 1 = SL, 2 = BD, 3 = RG
         if (++Spectrum_state > 3) {Spectrum_state = 0;}
+        if(Spectrum_state == 1)LoadActiveScanFrequencies();
         if (!scanChannelsCount && Spectrum_state ==1) Spectrum_state++; //No SL skip SL mode
         char sText[32];
         const char* s[] = {"FREQ", "S LIST", "BAND", "RANGE"};
